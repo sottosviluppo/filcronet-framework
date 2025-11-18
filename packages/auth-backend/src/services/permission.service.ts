@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { PermissionEntity } from "../entities/permission.entity";
-import { PermissionAction, PermissionResource } from "@filcronet/core";
+import { PermissionAction, PermissionResource } from "@sottosviluppo/core";
 
 /**
  * Service for managing permissions

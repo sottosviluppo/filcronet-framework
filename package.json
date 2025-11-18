@@ -4,7 +4,6 @@
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
     "clean": "pnpm -r clean",
-    "clean:all": "rimraf packages/*/dist packages/*/node_modules node_modules",
     "version:patch": "pnpm -r exec pnpm version patch",
     "version:minor": "pnpm -r exec pnpm version minor",
     "version:major": "pnpm -r exec pnpm version major"

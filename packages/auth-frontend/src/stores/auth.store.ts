@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import type { IUser } from "@filcronet/core";
+import type { IUser } from "@sottosviluppo/core";
 import type { LoginCredentials, RegisterData, AuthConfig } from "../types";
 import { AuthApi } from "../api";
 import { TokenStorage } from "../utils";

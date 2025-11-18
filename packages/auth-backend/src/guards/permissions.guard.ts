@@ -2,7 +2,7 @@ import { Injectable, CanActivate, ExecutionContext } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { PERMISSIONS_KEY } from "../decorators/require-permissions.decorator";
 import { JwtPayload } from "../interfaces/jwt-payload.interface";
-import { PermissionString } from "@filcronet/core";
+import { PermissionString } from "@sottosviluppo/core";
 
 /**
  * Permissions Guard

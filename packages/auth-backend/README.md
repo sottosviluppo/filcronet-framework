@@ -1,4 +1,4 @@
-# @filcronet/auth-backend
+# @sottosviluppo/auth-backend
 
 Complete authentication and authorization module for NestJS applications with TypeORM and GDPR-compliant password validation.
 
@@ -18,7 +18,7 @@ Complete authentication and authorization module for NestJS applications with Ty
 ## Installation
 
 ```bash
-pnpm add @filcronet/auth-backend @filcronet/core
+pnpm add @sottosviluppo/auth-backend @sottosviluppo/core
 ```
 
 ### Peer Dependencies
@@ -38,7 +38,7 @@ pnpm add typeorm passport passport-jwt class-validator class-transformer rxjs re
 // app.module.ts
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { FilcronetAuthModule } from "@filcronet/auth-backend";
+import { FilcronetAuthModule } from "@sottosviluppo/auth-backend";
 
 @Module({
   imports: [
@@ -159,7 +159,7 @@ import {
   RequirePermissions,
   CurrentUser,
   JwtPayload,
-} from "@filcronet/auth-backend";
+} from "@sottosviluppo/auth-backend";
 
 @Controller("products")
 @UseGuards(JwtAuthGuard)
@@ -176,7 +176,7 @@ export class ProductsController {
 
 ```typescript
 import { Controller, Get } from "@nestjs/common";
-import { Public } from "@filcronet/auth-backend";
+import { Public } from "@sottosviluppo/auth-backend";
 
 @Controller("health")
 export class HealthController {
@@ -191,7 +191,7 @@ export class HealthController {
 ### Custom Validation with PasswordValidator
 
 ```typescript
-import { PasswordValidator } from "@filcronet/core";
+import { PasswordValidator } from "@sottosviluppo/core";
 import { BadRequestException } from "@nestjs/common";
 
 class CustomUserService {
@@ -235,7 +235,7 @@ Passwords are validated according to ENISA guidelines and NIST SP 800-63B:
 The package includes `IsStrongPasswordConstraint` for use in DTOs:
 
 ```typescript
-import { IsStrongPasswordConstraint } from "@filcronet/auth-backend";
+import { IsStrongPasswordConstraint } from "@sottosviluppo/auth-backend";
 import { Validate } from "class-validator";
 
 export class RegisterDto {
@@ -329,7 +329,7 @@ interface AuthModuleOptions {
 Implement `IEmailService` to send password reset and invitation emails:
 
 ```typescript
-import { IEmailService } from "@filcronet/auth-backend";
+import { IEmailService } from "@sottosviluppo/auth-backend";
 
 @Injectable()
 export class MyEmailService implements IEmailService {

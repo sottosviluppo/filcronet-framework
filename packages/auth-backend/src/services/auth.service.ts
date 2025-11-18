@@ -12,7 +12,7 @@ import { RegisterDto } from "../dto/register.dto";
 import { JwtPayload, TokenType } from "../interfaces/jwt-payload.interface";
 import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
 import { UserEntity } from "../entities/user.entity";
-import { UserStatus } from "@filcronet/core";
+import { UserStatus } from "@sottosviluppo/core";
 import { StringValue } from "ms";
 
 /**

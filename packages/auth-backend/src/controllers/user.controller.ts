@@ -25,7 +25,7 @@ import { UpdateUserDto } from "../dto/update-user.dto";
 import { JwtAuthGuard } from "../guards/jwt-auth.guard";
 import { PermissionsGuard } from "../guards/permissions.guard";
 import { RequirePermissions } from "../decorators/require-permissions.decorator";
-import { IPaginatedResponse, IPaginationParams } from "@filcronet/core";
+import { IPaginatedResponse, IPaginationParams } from "@sottosviluppo/core";
 import { UserEntity } from "../entities/user.entity";
 
 /**

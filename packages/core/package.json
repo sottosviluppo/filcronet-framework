@@ -1,5 +1,5 @@
 {
-  "name": "@filcronet/core",
+  "name": "@sottosviluppo/core",
   "version": "0.1.0",
   "description": "Core utilities, types and interfaces for Filcronet Framework",
   "main": "dist/index.js",

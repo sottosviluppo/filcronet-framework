@@ -1,5 +1,5 @@
 import { SetMetadata } from "@nestjs/common";
-import { PermissionString } from "@filcronet/core";
+import { PermissionString } from "@sottosviluppo/core";
 
 /**
  * Metadata key for required permissions

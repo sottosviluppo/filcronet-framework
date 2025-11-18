@@ -6,7 +6,7 @@ import {
   IsUUID,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { ICreateUserDto } from "@filcronet/core";
+import { ICreateUserDto } from "@sottosviluppo/core";
 
 /**
  * Data Transfer Object for creating a new user

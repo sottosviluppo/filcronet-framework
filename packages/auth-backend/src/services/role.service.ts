@@ -7,7 +7,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
 import { RoleEntity } from "../entities/role.entity";
 import { PermissionEntity } from "../entities/permission.entity";
-import { ICreateRoleDto, IUpdateRoleDto } from "@filcronet/core";
+import { ICreateRoleDto, IUpdateRoleDto } from "@sottosviluppo/core";
 
 /**
  * Service for managing roles and their permissions

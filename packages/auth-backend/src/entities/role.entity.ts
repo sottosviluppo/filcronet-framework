@@ -7,7 +7,7 @@ import {
   ManyToMany,
   JoinTable,
 } from "typeorm";
-import { IRole } from "@filcronet/core";
+import { IRole } from "@sottosviluppo/core";
 import { UserEntity } from "./user.entity";
 import { PermissionEntity } from "./permission.entity";
 

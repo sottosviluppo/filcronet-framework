@@ -9,7 +9,7 @@ import { UserEntity } from "../entities/user.entity";
 import { RoleEntity } from "../entities/role.entity";
 import { CreateUserDto } from "../dto/create-user.dto";
 import { UpdateUserDto } from "../dto/update-user.dto";
-import { IPaginationParams, IPaginatedResponse } from "@filcronet/core";
+import { IPaginationParams, IPaginatedResponse } from "@sottosviluppo/core";
 
 /**
  * Service for managing user-related operations

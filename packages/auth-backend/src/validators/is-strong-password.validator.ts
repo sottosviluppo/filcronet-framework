@@ -1,5 +1,5 @@
 import { ValidationArguments, ValidatorConstraint, ValidatorConstraintInterface } from "class-validator";
-import { PasswordValidator } from "@filcronet/core";
+import { PasswordValidator } from "@sottosviluppo/core";
 
 /**
  * Custom validator for GDPR-compliant password

@@ -1,4 +1,4 @@
-# @filcronet/auth-frontend
+# @sottosviluppo/auth-frontend
 
 Authentication composables, stores and utilities for Vue 3 applications with full i18n support.
 
@@ -18,13 +18,13 @@ Authentication composables, stores and utilities for Vue 3 applications with ful
 ## Installation
 
 ```bash
-pnpm add @filcronet/auth-frontend @filcronet/core
+pnpm add @sottosviluppo/auth-frontend @sottosviluppo/core
 ```
 
 ### Peer Dependencies
 
 ```bash
-pnpm add vue@^3.5.0 pinia@^2.2.0 axios@^1.7.0 zod@^3.23.0
+pnpm add vue@^3.5.0 pinia axios zod
 ```
 
 ## Quick Start
@@ -46,7 +46,7 @@ app.mount("#app");
 
 ```typescript
 // main.ts or App.vue
-import { useAuthStore } from "@filcronet/auth-frontend";
+import { useAuthStore } from "@sottosviluppo/auth-frontend";
 
 const authStore = useAuthStore();
 authStore.initialize({
@@ -62,7 +62,7 @@ authStore.initialize({
 
 ```vue
 <script setup lang="ts">
-import { useAuth, loginSchema } from "@filcronet/auth-frontend";
+import { useAuth, loginSchema } from "@sottosviluppo/auth-frontend";
 
 const { user, isAuthenticated, login, logout, isLoading, error } = useAuth();
 
@@ -166,14 +166,14 @@ const {
 } = usePermissions();
 ```
 
-### usePasswordStrength() ⭐ NEW
+### usePasswordStrength()
 
 Real-time password strength feedback with GDPR compliance.
 
 ```vue
 <script setup lang="ts">
-import { usePasswordStrength } from "@filcronet/auth-frontend";
-import { PasswordErrorKey } from "@filcronet/core";
+import { usePasswordStrength } from "@sottosviluppo/auth-frontend";
+import { PasswordErrorKey } from "@sottosviluppo/core";
 import { useI18n } from "vue-i18n";
 
 const { t } = useI18n();
@@ -240,7 +240,7 @@ const {
 } = usePasswordRecovery();
 ```
 
-## Internationalization (i18n) Support ⭐ NEW
+## Internationalization (i18n) Support
 
 ### useValidation() - i18n-Ready Validation
 
@@ -249,8 +249,8 @@ Create validation schemas with your own translations:
 ```vue
 <script setup lang="ts">
 import { useI18n } from "vue-i18n";
-import { useValidation } from "@filcronet/auth-frontend";
-import { PasswordErrorKey } from "@filcronet/core";
+import { useValidation } from "@sottosviluppo/auth-frontend";
+import { PasswordErrorKey } from "@sottosviluppo/core";
 
 const { t } = useI18n();
 
@@ -358,9 +358,9 @@ export default {
 
 ```vue
 <script setup lang="ts">
-import { useAuth, useValidation } from "@filcronet/auth-frontend";
+import { useAuth, useValidation } from "@sottosviluppo/auth-frontend";
 import { useI18n } from "vue-i18n";
-import { PasswordErrorKey } from "@filcronet/core";
+import { PasswordErrorKey } from "@sottosviluppo/core";
 
 const { t } = useI18n();
 const { register, isLoading } = useAuth();
@@ -427,7 +427,7 @@ async function handleRegister() {
 
 ```vue
 <script setup>
-import { usePermissions } from "@filcronet/auth-frontend";
+import { usePermissions } from "@sottosviluppo/auth-frontend";
 
 const { can, canAny } = usePermissions();
 </script>
@@ -451,8 +451,8 @@ Create a helper in your app to avoid repetition:
 ```typescript
 // src/composables/useAppValidation.ts
 import { useI18n } from "vue-i18n";
-import { useValidation } from "@filcronet/auth-frontend";
-import { PasswordErrorKey } from "@filcronet/core";
+import { useValidation } from "@sottosviluppo/auth-frontend";
+import { PasswordErrorKey } from "@sottosviluppo/core";
 
 export function useAppValidation() {
   const { t } = useI18n();
@@ -516,7 +516,7 @@ import {
   resetPasswordSchema,
   setPasswordSchema,
   forgotPasswordSchema,
-} from "@filcronet/auth-frontend";
+} from "@sottosviluppo/auth-frontend";
 
 // These have hardcoded English messages
 const result = loginSchema.safeParse(credentials);
@@ -545,7 +545,7 @@ interface AuthConfig {
 - `usePermissions()` - Permission checking
 - `usePasswordStrength()` - Password strength meter with i18n
 - `usePasswordRecovery()` - Password recovery flows
-- `useValidation()` ⭐ - i18n-ready validation schemas
+- `useValidation()` - i18n-ready validation schemas
 
 ### Stores
 
@@ -563,7 +563,7 @@ interface AuthConfig {
 
 ### Factory Functions (i18n)
 
-- `createValidationSchemas()` ⭐ - Create schemas with custom messages
+- `createValidationSchemas()` - Create schemas with custom messages
 
 ### Types
 
@@ -571,14 +571,14 @@ interface AuthConfig {
 - `LoginCredentials`
 - `RegisterData`
 - `AuthResponse`
-- `SchemaFactoryConfig` ⭐
-- `UsePasswordStrengthOptions` ⭐
+- `SchemaFactoryConfig`
+- `UsePasswordStrengthOptions`
 
-### Re-exports from @filcronet/core
+### Re-exports from @sottosviluppo/core
 
-- `PasswordErrorKey` ⭐
-- `IValidationMessages` ⭐
-- `IPasswordErrorMessages` ⭐
+- `PasswordErrorKey`
+- `IValidationMessages`
+- `IPasswordErrorMessages`
 
 ## Migration from Hardcoded Messages
 
@@ -586,10 +586,10 @@ If you have existing code using the default schemas:
 
 ```typescript
 // Before (still works!)
-import { loginSchema } from "@filcronet/auth-frontend";
+import { loginSchema } from "@sottosviluppo/auth-frontend";
 
 // After (with i18n)
-import { useValidation } from "@filcronet/auth-frontend";
+import { useValidation } from "@sottosviluppo/auth-frontend";
 const { loginSchema } = useValidation(() => ({
   /* your messages */
 }));

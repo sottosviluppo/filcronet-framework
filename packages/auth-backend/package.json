@@ -1,5 +1,5 @@
 {
-  "name": "@filcronet/auth-backend",
+  "name": "@sottosviluppo/auth-backend",
   "version": "0.1.0",
   "description": "Authentication and authorization module for NestJS with TypeORM",
   "main": "dist/index.js",
@@ -47,7 +47,7 @@
     "rxjs": "^7.8.2"
   },
   "dependencies": {
-    "@filcronet/core": "workspace:*",
+    "@sottosviluppo/core": "workspace:*",
     "bcrypt": "^5.1.1"
   },
   "devDependencies": {

@@ -10,7 +10,7 @@ import {
   IPermission,
   PermissionAction,
   PermissionResource,
-} from "@filcronet/core";
+} from "@sottosviluppo/core";
 import { RoleEntity } from "./role.entity";
 
 /**

@@ -10,7 +10,7 @@ import { AuthService } from "./auth.service";
 import { TokenType } from "../interfaces/jwt-payload.interface";
 import { IEmailService } from "../interfaces/email-service.interface";
 import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
-import { UserStatus } from "@filcronet/core";
+import { UserStatus } from "@sottosviluppo/core";
 
 /**
  * Service handling password recovery and invitation flows

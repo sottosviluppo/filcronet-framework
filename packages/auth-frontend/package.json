@@ -1,5 +1,5 @@
 {
-  "name": "@filcronet/auth-frontend",
+  "name": "@sottosviluppo/auth-frontend",
   "version": "0.1.0",
   "description": "Authentication composables and utilities for Vue 3",
   "main": "dist/index.js",
@@ -38,7 +38,7 @@
     "vue": "^3.5.24"
   },
   "dependencies": {
-    "@filcronet/core": "workspace:*",
+    "@sottosviluppo/core": "workspace:*",
     "zod": "^4.1.12"
   },
   "devDependencies": {

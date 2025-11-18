@@ -3,7 +3,7 @@ import {
   PasswordValidator,
   type IValidationMessages,
   type IPasswordErrorMessages,
-} from "@filcronet/core";
+} from "@sottosviluppo/core";
 
 /**
  * Schema factory configuration

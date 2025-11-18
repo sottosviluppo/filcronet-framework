@@ -1,6 +1,6 @@
 import { computed } from "vue";
 import { useAuth } from "./useAuth";
-import type { PermissionString } from "@filcronet/core";
+import type { PermissionString } from "@sottosviluppo/core";
 
 /**
  * Permissions composable
@@ -39,9 +39,9 @@ export function usePermissions() {
     if (!user.value || !user.value.roles) return [];
 
     const allPermissions = user.value.roles
-      .flatMap((role) => role.permissions || [])
+      .flatMap((role: any) => role.permissions || [])
       .map(
-        (permission) =>
+        (permission: any) =>
           `${permission.resource}:${permission.action}` as PermissionString
       );
 

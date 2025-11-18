@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PasswordValidator } from "@filcronet/core";
+import { PasswordValidator } from "@sottosviluppo/core";
 
 /**
  * GDPR-compliant password validation schema

@@ -9,7 +9,7 @@ import {
   BeforeInsert,
   BeforeUpdate,
 } from "typeorm";
-import { IUser, UserStatus } from "@filcronet/core";
+import { IUser, UserStatus } from "@sottosviluppo/core";
 import { RoleEntity } from "./role.entity";
 import * as bcrypt from "bcrypt";
 

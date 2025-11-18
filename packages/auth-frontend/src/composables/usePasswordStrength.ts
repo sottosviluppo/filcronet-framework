@@ -2,7 +2,7 @@ import { computed } from "vue";
 import {
   PasswordValidator,
   type IPasswordErrorMessages,
-} from "@filcronet/core";
+} from "@sottosviluppo/core";
 
 /**
  * Options for password strength composable

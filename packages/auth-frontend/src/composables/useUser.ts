@@ -1,6 +1,5 @@
 import { computed } from "vue";
 import { useAuth } from "./useAuth";
-import type { IUser, UserStatus } from "@filcronet/core";
 
 /**
  * User composable
@@ -100,7 +99,7 @@ export function useUser() {
   /**
    * User's role names
    */
-  const roleNames = computed(() => roles.value.map((role) => role.name));
+  const roleNames = computed(() => roles.value.map((role: any) => role.name));
 
   /**
    * Checks if user has a specific role

@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsArray, IsUUID, IsEnum } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IUpdateUserDto, UserStatus } from "@filcronet/core";
+import { IUpdateUserDto, UserStatus } from "@sottosviluppo/core";
 
 /**
  * Data Transfer Object for updating user information
