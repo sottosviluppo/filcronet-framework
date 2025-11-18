@@ -1,13 +1,13 @@
 {
   "name": "filcronet-framework",
   "scripts": {
-    "build": "pnpm -r --filter './packages/*' run build",
-    "dev": "pnpm -r --parallel --filter './packages/*' run dev",
-    "clean": "pnpm -r --filter './packages/*' run clean",
+    "build": "pnpm -r build",
+    "dev": "pnpm -r --parallel dev",
+    "clean": "pnpm -r clean",
     "clean:all": "rimraf packages/*/dist packages/*/node_modules node_modules",
-    "version:patch": "pnpm -r --filter './packages/*' exec pnpm version patch",
-    "version:minor": "pnpm -r --filter './packages/*' exec pnpm version minor",
-    "publish:all": "pnpm -r --filter './packages/*' publish --no-git-checks"
+    "version:patch": "pnpm -r exec pnpm version patch",
+    "version:minor": "pnpm -r exec pnpm version minor",
+    "version:major": "pnpm -r exec pnpm version major"
   },
   "keywords": [
     "filcronet",

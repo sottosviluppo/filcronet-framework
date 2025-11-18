@@ -6,6 +6,7 @@ Internal framework for Filcronet custom software projects.
 
 - **[@filcronet/core](./packages/core)** - Shared types, interfaces and enums
 - **[@filcronet/auth-backend](./packages/auth-backend)** - NestJS authentication module
+- **[@filcronet/auth-frontend](./packages/auth-frontend)** - Vue3 authentication module
 
 ## Tech Stack
 
@@ -23,6 +24,7 @@ Internal framework for Filcronet custom software projects.
 - pnpm 10+
 
 ### Setup
+
 ```bash
 # Install dependencies
 pnpm install
@@ -35,11 +37,13 @@ pnpm dev
 ```
 
 ### Project Structure
+
 ```
 filcronet-framework/
 ├── packages/
 │   ├── core/              # Shared types and interfaces
-│   └── auth-backend/      # Authentication module
+│   └── auth-backend/      # Backend Authentication module
+│   └── auth-frontend/     # Frontend Authentication module
 ├── pnpm-workspace.yaml
 └── package.json
 ```
@@ -47,29 +51,13 @@ filcronet-framework/
 ## Usage
 
 ### Install in a project
+
 ```bash
-pnpm add @filcronet/core @filcronet/auth-backend
-```
-
-### Example
-```typescript
-import { FilcronetAuthModule } from '@filcronet/auth-backend';
-import { UserStatus } from '@filcronet/core';
-
-@Module({
-  imports: [
-    FilcronetAuthModule.forRoot({
-      jwt: {
-        secret: process.env.JWT_SECRET,
-        expiresIn: '7d',
-      },
-    }),
-  ],
-})
-export class AppModule {}
+pnpm add @filcronet/core
 ```
 
 ## Scripts
+
 ```bash
 # Build all packages
 pnpm build

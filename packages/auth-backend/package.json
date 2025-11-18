@@ -4,10 +4,23 @@
   "description": "Authentication and authorization module for NestJS with TypeORM",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "prepublishOnly": "pnpm build"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sottosviluppo/filcronet-framework.git",
+    "directory": "packages/auth-backend"
   },
   "keywords": [
     "filcronet",
@@ -18,7 +31,7 @@
   ],
   "author": "Filippo Crotti",
   "license": "UNLICENSED",
-  "private": true,
+  "private": false,
   "peerDependencies": {
     "@nestjs/common": "^11.0.0",
     "@nestjs/core": "^11.0.0",
