@@ -1,0 +1,104 @@
+import {
+  IsEmail,
+  IsString,
+  IsOptional,
+  IsArray,
+  IsUUID,
+} from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { ICreateUserDto } from "@filcronet/core";
+
+/**
+ * Data Transfer Object for creating a new user
+ * Used by administrators to create users with specific roles
+ *
+ * @export
+ * @class CreateUserDto
+ * @implements {ICreateUserDto}
+ */
+export class CreateUserDto implements ICreateUserDto {
+  /**
+   * User email address (must be unique)
+   *
+   * @type {string}
+   * @memberof CreateUserDto
+   */
+  @ApiProperty({
+    description: "User email address",
+    example: "user@example.com",
+  })
+  @IsEmail()
+  email: string;
+
+  /**
+   * Username (optional, must be unique if provided)
+   *
+   * @type {string}
+   * @memberof CreateUserDto
+   */
+  @ApiPropertyOptional({
+    description: "Username",
+    example: "john_doe",
+  })
+  @IsOptional()
+  @IsString()
+  username?: string;
+
+  /**
+   * User first name
+   *
+   * @type {string}
+   * @memberof CreateUserDto
+   */
+  @ApiPropertyOptional({
+    description: "First name",
+    example: "John",
+  })
+  @IsOptional()
+  @IsString()
+  firstName?: string;
+
+  /**
+   * User last name
+   *
+   * @type {string}
+   * @memberof CreateUserDto
+   */
+  @ApiPropertyOptional({
+    description: "Last name",
+    example: "Doe",
+  })
+  @IsOptional()
+  @IsString()
+  lastName?: string;
+
+  /**
+   * User password (will be hashed automatically)
+   *
+   * @type {string}
+   * @memberof CreateUserDto
+   */
+  @ApiProperty({
+    description: "User password",
+    example: "SecureP@ss123",
+  })
+  @IsString()
+  password: string;
+
+  /**
+   * Array of role IDs to assign to the user
+   * If not provided, default "user" role will be assigned
+   *
+   * @type {string[]}
+   * @memberof CreateUserDto
+   */
+  @ApiPropertyOptional({
+    description: "Array of role IDs",
+    example: ["550e8400-e29b-41d4-a716-446655440000"],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @IsUUID("4", { each: true })
+  roleIds?: string[];
+}

@@ -1,0 +1,27 @@
+{
+  "name": "@filcronet/core",
+  "version": "0.1.0",
+  "description": "Core utilities, types and interfaces for Filcronet Framework",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "filcronet",
+    "framework",
+    "core",
+    "types",
+    "interfaces",
+    "validators"
+  ],
+  "author": "Filippo Crotti",
+  "license": "UNLICENSED",
+  "private": true,
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.19.0"
+}

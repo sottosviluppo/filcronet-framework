@@ -1,0 +1,39 @@
+{
+  "name": "@filcronet/auth-frontend",
+  "version": "0.1.0",
+  "description": "Authentication composables and utilities for Vue 3",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "filcronet",
+    "auth",
+    "frontend",
+    "vue3",
+    "composables"
+  ],
+  "author": "Filippo Crotti",
+  "license": "UNLICENSED",
+  "private": false,
+  "peerDependencies": {
+    "axios": "^1.13.2",
+    "pinia": "^3.0.4",
+    "vue": "^3.5.24"
+  },
+  "dependencies": {
+    "@filcronet/core": "workspace:*",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "axios": "^1.13.2",
+    "pinia": "^3.0.4",
+    "typescript": "^5.9.3",
+    "vue": "^3.5.24"
+  },
+  "packageManager": "pnpm@10.19.0"
+}

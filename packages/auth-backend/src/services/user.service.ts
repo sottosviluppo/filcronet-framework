@@ -1,0 +1,244 @@
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, In } from "typeorm";
+import { UserEntity } from "../entities/user.entity";
+import { RoleEntity } from "../entities/role.entity";
+import { CreateUserDto } from "../dto/create-user.dto";
+import { UpdateUserDto } from "../dto/update-user.dto";
+import { IPaginationParams, IPaginatedResponse } from "@filcronet/core";
+
+/**
+ * Service for managing user-related operations
+ * Handles CRUD operations, validation, and user management
+ *
+ * @export
+ * @class UserService
+ */
+@Injectable()
+export class UserService {
+  constructor(
+    @InjectRepository(UserEntity)
+    private userRepository: Repository<UserEntity>,
+    @InjectRepository(RoleEntity)
+    private roleRepository: Repository<RoleEntity>
+  ) {}
+
+  /**
+   * Creates a new user with validation
+   * Checks for existing email/username and assigns default or specified roles
+   *
+   * @param {CreateUserDto} createUserDto - User creation data
+   * @returns {Promise<UserEntity>} Created user entity
+   * @throws {ConflictException} If email or username already exists
+   * @memberof UserService
+   */
+  async create(createUserDto: CreateUserDto): Promise<UserEntity> {
+    // Check if email already exists
+    const existingUser = await this.userRepository.findOne({
+      where: { email: createUserDto.email },
+    });
+
+    if (existingUser) {
+      throw new ConflictException("Email already registered");
+    }
+
+    // Check if username already exists (if provided)
+    if (createUserDto.username) {
+      const existingUsername = await this.userRepository.findOne({
+        where: { username: createUserDto.username },
+      });
+
+      if (existingUsername) {
+        throw new ConflictException("Username already in use");
+      }
+    }
+
+    // Load roles if specified
+    let roles: RoleEntity[] = [];
+    if (createUserDto.roleIds && createUserDto.roleIds.length > 0) {
+      roles = await this.roleRepository.findBy({
+        id: In(createUserDto.roleIds),
+      });
+    } else {
+      // Assign default "user" role
+      const defaultRole = await this.roleRepository.findOne({
+        where: { name: "user" },
+      });
+      if (defaultRole) {
+        roles = [defaultRole];
+      }
+    }
+
+    const user = this.userRepository.create({
+      ...createUserDto,
+      roles,
+    });
+
+    return this.userRepository.save(user);
+  }
+
+  /**
+   * Retrieves paginated list of users with sorting options
+   *
+   * @param {IPaginationParams} [pagination] - Pagination and sorting parameters
+   * @returns {Promise<IPaginatedResponse<UserEntity>>} Paginated user list
+   * @memberof UserService
+   */
+  async findAll(
+    pagination?: IPaginationParams
+  ): Promise<IPaginatedResponse<UserEntity>> {
+    const page = pagination?.page || 1;
+    const limit = pagination?.limit || 10;
+    const skip = (page - 1) * limit;
+
+    const queryBuilder = this.userRepository
+      .createQueryBuilder("user")
+      .leftJoinAndSelect("user.roles", "roles")
+      .leftJoinAndSelect("roles.permissions", "permissions");
+
+    // Apply sorting
+    if (pagination?.sortBy) {
+      const order = pagination.sortOrder || "ASC";
+      queryBuilder.orderBy(`user.${pagination.sortBy}`, order);
+    } else {
+      queryBuilder.orderBy("user.createdAt", "DESC");
+    }
+
+    const [users, total] = await queryBuilder
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return {
+      success: true,
+      data: users,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
+   * Finds a single user by ID with relations
+   *
+   * @param {string} id - User UUID
+   * @returns {Promise<UserEntity>} User entity with roles and permissions
+   * @throws {NotFoundException} If user not found
+   * @memberof UserService
+   */
+  async findOne(id: string): Promise<UserEntity> {
+    const user = await this.userRepository.findOne({
+      where: { id },
+      relations: ["roles", "roles.permissions"],
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with ID ${id} not found`);
+    }
+
+    return user;
+  }
+
+  /**
+   * Finds a user by email including password field for authentication
+   *
+   * @param {string} email - User email address
+   * @returns {Promise<UserEntity | null>} User entity or null if not found
+   * @memberof UserService
+   */
+  async findByEmail(email: string): Promise<UserEntity | null> {
+    return this.userRepository.findOne({
+      where: { email },
+      relations: ["roles", "roles.permissions"],
+      select: [
+        "id",
+        "email",
+        "username",
+        "firstName",
+        "lastName",
+        "password",
+        "status",
+        "emailVerified",
+        "lastLoginAt",
+        "createdAt",
+        "updatedAt",
+      ],
+    });
+  }
+
+  /**
+   * Updates user information with validation
+   *
+   * @param {string} id - User UUID
+   * @param {UpdateUserDto} updateUserDto - Fields to update
+   * @returns {Promise<UserEntity>} Updated user entity
+   * @throws {NotFoundException} If user not found
+   * @throws {ConflictException} If username already in use
+   * @memberof UserService
+   */
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<UserEntity> {
+    const user = await this.findOne(id);
+
+    // Check if username is being changed and is not already in use
+    if (updateUserDto.username && updateUserDto.username !== user.username) {
+      const existingUsername = await this.userRepository.findOne({
+        where: { username: updateUserDto.username },
+      });
+
+      if (existingUsername) {
+        throw new ConflictException("Username already in use");
+      }
+    }
+
+    // Update roles if specified
+    if (updateUserDto.roleIds) {
+      const roles = await this.roleRepository.findBy({
+        id: In(updateUserDto.roleIds),
+      });
+      user.roles = roles;
+    }
+
+    // Update other fields
+    Object.assign(user, {
+      username: updateUserDto.username,
+      firstName: updateUserDto.firstName,
+      lastName: updateUserDto.lastName,
+      status: updateUserDto.status,
+    });
+
+    return this.userRepository.save(user);
+  }
+
+  /**
+   * Permanently deletes a user
+   *
+   * @param {string} id - User UUID
+   * @returns {Promise<void>}
+   * @throws {NotFoundException} If user not found
+   * @memberof UserService
+   */
+  async remove(id: string): Promise<void> {
+    const user = await this.findOne(id);
+    await this.userRepository.remove(user);
+  }
+
+  /**
+   * Updates the last login timestamp for a user
+   *
+   * @param {string} userId - User UUID
+   * @returns {Promise<void>}
+   * @memberof UserService
+   */
+  async updateLastLogin(userId: string): Promise<void> {
+    await this.userRepository.update(userId, {
+      lastLoginAt: new Date(),
+    });
+  }
+}
