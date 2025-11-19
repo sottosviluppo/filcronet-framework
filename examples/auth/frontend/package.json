@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@sottosviluppo/auth-frontend": "^0.1.0",
-    "@sottosviluppo/core": "^0.1.0",
+    "@sottosviluppo/core": "^0.1.1",
     "pinia": "^3.0.3",
     "vue": "^3.5.22",
     "vue-router": "^4.6.3"

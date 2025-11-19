@@ -1,109 +1,94 @@
-# @sottosviluppo/filcronet-core
+# @sottosviluppo/core
 
-Core package for Filcronet framework containing shared types, interfaces, enums and validators.
+Core package for Filcronet framework containing shared types, interfaces, enums, and validators.
+
+## Features
+
+- 📋 **Type-safe interfaces** for User, Role, Permission, API responses
+- 🎯 **Universal enums** (UserStatus, PermissionAction)
+- 🔧 **TypeScript utilities** (Nullable, Optional, DeepPartial)
+- 🔒 **GDPR-compliant password validator** with i18n support
+- 🌍 **Internationalization ready** (error keys for translations)
+- 🚀 **Zero runtime dependencies** (pure TypeScript)
 
 ## Installation
-
 ```bash
-pnpm add @sottosviluppo/filcronet-core
+pnpm add @sottosviluppo/core
 ```
 
 ## What's Included
 
 ### 📋 Interfaces
 
-Common data structures used across the framework:
-
 #### User Management
-
-- **`IUser`** - User entity structure with status, roles and timestamps
-- **`ICreateUserDto`** - Data transfer object for user creation
-- **`IUpdateUserDto`** - Data transfer object for user updates
+- **`IUser`** - User entity with status, roles, timestamps
+- **`ICreateUserDto`** - DTO for user creation
+- **`IUpdateUserDto`** - DTO for user updates
 
 #### RBAC (Role-Based Access Control)
-
 - **`IRole`** - Role entity with permissions
 - **`ICreateRoleDto`** - DTO for role creation
 - **`IUpdateRoleDto`** - DTO for role updates
 - **`IPermission`** - Permission entity (resource:action pattern)
-- **`PermissionString`** - Type helper for permission strings (e.g., `'users:create'`)
+- **`PermissionString`** - Type for permission strings (e.g., `"users:create"`)
 
 #### API Responses
-
-- **`IApiResponse<T>`** - Standardized API response wrapper
+- **`IApiResponse<T>`** - Standardized API response
 - **`IApiError`** - Detailed error information
-- **`IApiMeta`** - Response metadata (timestamp, requestId)
-- **`IPaginatedResponse<T>`** - Paginated response with metadata
-- **`IPagination`** - Pagination information
-- **`IPaginationParams`** - Query parameters for pagination and sorting
-- **`ITokenPair`** - JWT access and refresh tokens
+- **`IApiMeta`** - Response metadata
+- **`IPaginatedResponse<T>`** - Paginated response
+- **`IPagination`** - Pagination info
+- **`IPaginationParams`** - Query params for pagination
+- **`ITokenPair`** - JWT access + refresh tokens
 
 #### Validation (i18n Support)
-
-- **`IValidationMessages`** - Validation message provider interface for i18n
-- **`IPasswordErrorMessages`** - Password error messages map for i18n
+- **`IValidationMessages`** - Validation message provider for i18n
+- **`IPasswordErrorMessages`** - Password error messages map
 
 ### 🎯 Enums
 
-Constant values for type safety:
+#### UserStatus
+- `ACTIVE` - User can access system
+- `INACTIVE` - Account disabled
+- `SUSPENDED` - Temporary restriction
+- `PENDING_VERIFICATION` - Email not verified
 
-- **`UserStatus`** - User account statuses
+#### PermissionAction
+- `CREATE` - Create resources
+- `READ` - View single resource
+- `UPDATE` - Modify resource
+- `DELETE` - Remove resource
+- `LIST` - Browse multiple resources
+- `MANAGE` - Full access (super-permission)
 
-  - `ACTIVE` - User can access the system
-  - `INACTIVE` - User account disabled
-  - `SUSPENDED` - Temporary restriction
-  - `PENDING_VERIFICATION` - Email not verified yet
-
-- **`PermissionAction`** - Permission actions
-
-  - `CREATE` - Create new resources
-  - `READ` - View single resource
-  - `UPDATE` - Modify existing resource
-  - `DELETE` - Remove resource
-  - `LIST` - Browse multiple resources
-  - `MANAGE` - Full access (all actions)
-
-- **`PermissionResource`** - Base system resources
-
-  - `USERS` - User management
-  - `ROLES` - Role management
-  - `PERMISSIONS` - Permission management
-  - `FILES` - File upload/management
-
-- **`PasswordErrorKey`** - Password validation error keys for i18n
-  - `TooShort` - Password too short
-  - `NoUppercase` - Missing uppercase letter
-  - `NoLowercase` - Missing lowercase letter
-  - `NoNumber` - Missing number
-  - `NoSpecialChar` - Missing special character
-  - `ContainsPersonalData` - Contains user personal data
-  - `CommonPassword` - Too common or predictable
+#### PasswordErrorKey (i18n)
+- `TooShort` - Password too short
+- `NoUppercase` - Missing uppercase
+- `NoLowercase` - Missing lowercase
+- `NoNumber` - Missing number
+- `NoSpecialChar` - Missing special character
+- `ContainsPersonalData` - Contains user data
+- `CommonPassword` - Too common/predictable
 
 ### 🔧 Type Utilities
+```typescript
+Nullable<T> = T | null
+Optional<T> = T | undefined
+DeepPartial<T> = { [P in keyof T]?: DeepPartial<T[P]> }
+```
 
-Essential TypeScript helper types:
+### 🔒 Password Validator
 
-- **`Nullable<T>`** - Makes type nullable (`T | null`)
-- **`Optional<T>`** - Makes type optional (`T | undefined`)
-- **`DeepPartial<T>`** - Makes all nested properties optional recursively
-
-### 🔐 Validators
-
-GDPR-compliant password validation:
-
-- **`PasswordValidator`** - Static class with password strength validation methods
-- **`PasswordValidationResult`** - Password validation result with error keys
+GDPR-compliant password validation following **ENISA guidelines** and **NIST SP 800-63B**.
 
 ## Usage Examples
 
 ### Backend (NestJS)
 
-#### User Entity with Type Safety
-
+#### Type-Safe Entities
 ```typescript
-import { IUser, UserStatus, Nullable } from "@sottosviluppo/filcronet-core";
+import { IUser, UserStatus, Nullable } from "@sottosviluppo/core";
 
-// Type-safe user entity
 const user: IUser = {
   id: "550e8400-e29b-41d4-a716-446655440000",
   email: "user@example.com",
@@ -114,21 +99,17 @@ const user: IUser = {
   updatedAt: new Date(),
 };
 
-// Nullable return type for queries
+// Nullable return types
 class UserService {
-  async findByEmail(email: string): Promise<Nullable<UserEntity>> {
+  async findByEmail(email: string): Promise<Nullable<IUser>> {
     return this.userRepository.findOne({ where: { email } });
   }
 }
 ```
 
 #### API Response Formatting
-
 ```typescript
-import {
-  IApiResponse,
-  IPaginatedResponse,
-} from "@sottosviluppo/filcronet-core";
+import { IApiResponse, IPaginatedResponse } from "@sottosviluppo/core";
 
 // Standard response
 const response: IApiResponse<IUser> = {
@@ -138,7 +119,7 @@ const response: IApiResponse<IUser> = {
 };
 
 // Paginated response
-const paginatedResponse: IPaginatedResponse<IUser> = {
+const paginated: IPaginatedResponse<IUser> = {
   success: true,
   data: users,
   pagination: {
@@ -151,60 +132,72 @@ const paginatedResponse: IPaginatedResponse<IUser> = {
 ```
 
 #### Permission Checking
-
 ```typescript
-import { PermissionString } from "@sottosviluppo/filcronet-core";
+import { PermissionString, PermissionAction } from "@sottosviluppo/core";
 
 // Type-safe permission strings
 const permission: PermissionString = "users:create";
 
-function hasPermission(user: IUser, permission: PermissionString): boolean {
+function hasPermission(user: IUser, required: PermissionString): boolean {
   return user.roles
-    .flatMap((role) => role.permissions)
-    .some((p) => `${p.resource}:${p.action}` === permission);
+    .flatMap(role => role.permissions)
+    .some(p => `${p.resource}:${p.action}` === required);
+}
+
+// Check for specific action
+function canManageUsers(user: IUser): boolean {
+  return hasPermission(user, `users:${PermissionAction.MANAGE}`);
 }
 ```
 
 ### Frontend (Vue 3 with Zod)
 
 #### Form Validation
-
 ```vue
 <script setup lang="ts">
 import { z } from "zod";
-import { UserStatus, type IUser } from "@sottosviluppo/filcronet-core";
+import { UserStatus, type IUser } from "@sottosviluppo/core";
 
-// Define validation schema
+// Zod schema for form validation
 const userSchema = z.object({
-  email: z.string().email(),
+  email: z.string().email("Invalid email"),
   username: z.string().min(3).max(30).optional(),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
 });
 
-// Use IUser type for API responses
+type UserForm = z.infer<typeof userSchema>;
+
+// API response typing
 const user = ref<IUser | null>(null);
 
 async function fetchUser(id: string) {
-  const response = await api.get(`/users/${id}`);
-  user.value = response.data as IUser;
+  const response = await api.get<IApiResponse<IUser>>(`/users/${id}`);
+  if (response.data.success) {
+    user.value = response.data.data;
+  }
 }
 </script>
 ```
 
-#### API Response Handling
-
+#### API Client with Types
 ```typescript
-import { IApiResponse, IApiError } from "@sottosviluppo/filcronet-core";
+import { IApiResponse, IApiError } from "@sottosviluppo/core";
+import axios from "axios";
 
 async function createUser(userData: any) {
   try {
-    const response = await api.post<IApiResponse<IUser>>("/users", userData);
+    const { data } = await axios.post<IApiResponse<IUser>>(
+      "/users",
+      userData
+    );
 
-    if (response.data.success) {
-      console.log("User created:", response.data.data);
+    if (data.success) {
+      console.log("User created:", data.data);
     } else {
-      console.error("Errors:", response.data.errors);
+      data.errors?.forEach((err: IApiError) => {
+        console.error(`${err.field}: ${err.message}`);
+      });
     }
   } catch (error) {
     console.error("Request failed:", error);
@@ -215,15 +208,13 @@ async function createUser(userData: any) {
 ### Password Validation with i18n
 
 #### Using Error Keys (Recommended)
-
 ```typescript
 import {
   PasswordValidator,
   PasswordErrorKey,
   type PasswordValidationResult,
-} from "@sottosviluppo/filcronet-core";
+} from "@sottosviluppo/core";
 
-// Validate password and get error keys
 const result: PasswordValidationResult = PasswordValidator.validatePassword(
   "MyPassword123",
   {
@@ -233,8 +224,8 @@ const result: PasswordValidationResult = PasswordValidator.validatePassword(
 );
 
 if (!result.isValid) {
-  // Map error keys to your translations
-  const translatedErrors = result.errorKeys.map((key) => {
+  // Map error keys to translations
+  const errors = result.errorKeys.map((key) => {
     switch (key) {
       case PasswordErrorKey.TooShort:
         return t("validation.password.tooShort");
@@ -255,14 +246,13 @@ if (!result.isValid) {
     }
   });
 
-  console.log("Password errors:", translatedErrors);
+  console.log("Errors:", errors);
 }
 ```
 
 #### Using Deprecated Method (Backward Compatibility)
-
 ```typescript
-import { PasswordValidator } from "@sottosviluppo/filcronet-core";
+import { PasswordValidator } from "@sottosviluppo/core";
 
 // Returns English error messages
 const errors: string[] = PasswordValidator.getPasswordErrors("weak", {
@@ -272,133 +262,120 @@ const errors: string[] = PasswordValidator.getPasswordErrors("weak", {
 ```
 
 ### Password Strength Meter
-
 ```typescript
-import { PasswordValidator } from "@sottosviluppo/filcronet-core";
+import { PasswordValidator } from "@sottosviluppo/core";
 
 const password = "MySecureP@ss2024";
 
 // Get strength score (0-4)
 const strength = PasswordValidator.getPasswordStrength(password); // 4
 
-// Get user-friendly label
+// Get label
 const label = PasswordValidator.getStrengthLabel(strength); // "Strong"
 
-// Check if password is strong enough
-const isValid = PasswordValidator.isStrongPassword(password); // true
+// Quick check
+const isStrong = PasswordValidator.isStrongPassword(password); // true
 
-// Generate a random strong password (for testing)
+// Generate strong password (for testing)
 const generated = PasswordValidator.generateStrongPassword();
+// "Xy9#mK2$pQ7@"
 ```
 
 ### Deep Partial for Updates
-
 ```typescript
-import { DeepPartial, IUser } from "@sottosviluppo/filcronet-core";
+import { DeepPartial, IUser } from "@sottosviluppo/core";
 
-// Update with nested optional fields
 type UpdateUserDto = DeepPartial<IUser>;
 
 const update: UpdateUserDto = {
   firstName: "John",
-  // All other fields are optional
+  // All other fields optional
 };
 
 await userService.update(userId, update);
 ```
 
-### Nullable Types for Database Queries
-
-```typescript
-import { Nullable } from "@sottosviluppo/filcronet-core";
-
-class UserRepository {
-  async findByUsername(username: string): Promise<Nullable<User>> {
-    const user = await this.db.findOne({ where: { username } });
-    return user || null; // Explicitly nullable
-  }
-}
-```
-
 ## Password Validator
 
-### GDPR-Compliant Password Validation
+### GDPR-Compliant Requirements
 
-The `PasswordValidator` class provides comprehensive password validation based on **ENISA guidelines** and **NIST SP 800-63B**:
+Based on **ENISA guidelines** and **NIST SP 800-63B**:
 
-**Requirements:**
-
-- ✅ Minimum 12 characters
-- ✅ At least 3 out of 4 character types:
-  - Uppercase letters (A-Z)
-  - Lowercase letters (a-z)
+- ✅ Minimum **12 characters**
+- ✅ At least **3 out of 4** character types:
+  - Uppercase (A-Z)
+  - Lowercase (a-z)
   - Numbers (0-9)
-  - Special characters (!@#$%^&\*...)
-- ✅ No sequential characters (e.g., "123", "abc", "qwerty")
-- ✅ No repeated characters (e.g., "aaa", "111")
-- ✅ Cannot contain personal data (name, email, username)
+  - Special (!@#$%^&*...)
+- ✅ No sequential characters (123, abc, qwerty)
+- ✅ No repeated characters (aaa, 111)
+- ✅ Cannot contain personal data
 
 ### Available Methods
-
 ```typescript
-// Check if password is strong (boolean)
-PasswordValidator.isStrongPassword(password: string): boolean
-
-// Get validation errors as keys (for i18n) ⭐ Recommended
+// Validate and get error keys (i18n-friendly) ⭐ Recommended
 PasswordValidator.validatePassword(
   password: string,
-  userContext?: { email?, username?, firstName?, lastName? }
+  context?: { email?, username?, firstName?, lastName? }
 ): PasswordValidationResult
 
-// Get validation errors as English messages (deprecated)
+// Quick boolean check
+PasswordValidator.isStrongPassword(password: string): boolean
+
+// Get errors as English strings (deprecated)
 PasswordValidator.getPasswordErrors(
   password: string,
-  userContext?: { email?, username?, firstName?, lastName? }
+  context?: object
 ): string[]
 
-// Calculate strength score (0-4)
+// Calculate strength (0-4)
 PasswordValidator.getPasswordStrength(password: string): number
 
-// Get strength label ("Very Weak" to "Strong")
+// Get strength label
 PasswordValidator.getStrengthLabel(score: number): string
 
-// Generate a strong password (for testing)
+// Generate strong password (testing)
 PasswordValidator.generateStrongPassword(): string
 ```
 
-## Internationalization (i18n) Support
-
-### Password Error Keys
-
-Use `PasswordErrorKey` enum to map validation errors to your translations:
-
+### Examples
 ```typescript
-import {
-  PasswordErrorKey,
-  IPasswordErrorMessages,
-} from "@sottosviluppo/filcronet-core";
+// ✅ Valid
+"MySecureP@ss2024"
+"Tr0ub4dor&3"
+"C0mpl3x!Pass"
 
-const passwordMessages: IPasswordErrorMessages = {
-  [PasswordErrorKey.TooShort]: t("validation.password.tooShort"),
-  [PasswordErrorKey.NoUppercase]: t("validation.password.noUppercase"),
-  [PasswordErrorKey.NoLowercase]: t("validation.password.noLowercase"),
-  [PasswordErrorKey.NoNumber]: t("validation.password.noNumber"),
-  [PasswordErrorKey.NoSpecialChar]: t("validation.password.noSpecialChar"),
-  [PasswordErrorKey.ContainsPersonalData]: t(
-    "validation.password.containsPersonalData"
-  ),
-  [PasswordErrorKey.CommonPassword]: t("validation.password.commonPassword"),
+// ❌ Invalid
+"short" // Too short
+"alllowercase123" // Only 2 types
+"Password123" // Contains "password"
+"abc12345" // Sequential
+"aaaBBB111" // Repeated
+"john@doe.com" // Contains email
+```
+
+## Internationalization (i18n)
+
+### Error Key Mapping
+```typescript
+import { PasswordErrorKey, IPasswordErrorMessages } from "@sottosviluppo/core";
+
+const messages: IPasswordErrorMessages = {
+  [PasswordErrorKey.TooShort]: t("password.tooShort"),
+  [PasswordErrorKey.NoUppercase]: t("password.noUppercase"),
+  [PasswordErrorKey.NoLowercase]: t("password.noLowercase"),
+  [PasswordErrorKey.NoNumber]: t("password.noNumber"),
+  [PasswordErrorKey.NoSpecialChar]: t("password.noSpecialChar"),
+  [PasswordErrorKey.ContainsPersonalData]: t("password.containsPersonalData"),
+  [PasswordErrorKey.CommonPassword]: t("password.commonPassword"),
 };
 ```
 
-### Validation Message Interfaces
-
-Implement `IValidationMessages` in your application for type-safe i18n:
-
+### Validation Messages Interface
 ```typescript
-import { IValidationMessages } from "@sottosviluppo/filcronet-core";
+import { IValidationMessages } from "@sottosviluppo/core";
 
-const messages: IValidationMessages = {
+const validationMessages: IValidationMessages = {
   email: {
     invalid: t("validation.email.invalid"),
     required: t("validation.email.required"),
@@ -421,99 +398,69 @@ const messages: IValidationMessages = {
 
 ## Related Packages
 
-This package is used by:
-
-- **[@sottosviluppo/filcronet-auth-backend](../auth-backend)** - NestJS authentication module
-- **[@sottosviluppo/filcronet-auth-frontend](../auth-frontend)** - Vue 3 authentication composables
+- **[@sottosviluppo/auth-backend](../auth-backend)** - NestJS authentication module
+- **[@sottosviluppo/auth-frontend](../auth-frontend)** - Vue 3 auth composables (coming soon)
 
 ## Validation Strategy
 
 This package provides:
+- ✅ **Password validation** (GDPR-compliant with i18n)
+- ✅ **Error key mapping** for translations
+- ✅ **Type definitions** for validation messages
 
-- ✅ **Password validation**: GDPR-compliant with i18n support
-- ✅ **Error key mapping**: `PasswordErrorKey` enum for translations
-- ✅ **Type definitions**: Interfaces for validation messages
-
-For other validation needs:
-
-- **Backend**: Use [class-validator](https://github.com/typestack/class-validator) with NestJS
-- **Frontend**: Use [Zod](https://github.com/colinhacks/zod) for schema validation
+For other validation:
+- **Backend**: Use [class-validator](https://github.com/typestack/class-validator)
+- **Frontend**: Use [Zod](https://github.com/colinhacks/zod)
 
 ## Why Core Package?
 
-The core package ensures:
+1. **Single Source of Truth** - One definition everywhere
+2. **Type Safety** - Prevents type mismatches
+3. **Consistency** - Same enums across all packages
+4. **i18n Ready** - Error keys for translations
+5. **GDPR Compliant** - Password validation follows standards
+6. **Easy Updates** - Update once, reflects everywhere
+7. **Zero Dependencies** - Pure TypeScript
 
-1. **Single Source of Truth** - One definition of data structures everywhere
-2. **Type Safety** - Prevents type mismatches between frontend and backend
-3. **Consistency** - Same enums and types across all packages
-4. **i18n Ready** - Validation error keys support internationalization
-5. **GDPR Compliance** - Password validation follows ENISA guidelines
-6. **Easy Updates** - Update types once, reflects everywhere
-7. **Zero Runtime Dependencies** - Pure TypeScript, no bloat
-
-## TypeScript Configuration
-
-This package is compiled with:
+## TypeScript Config
 
 - `strict: true` - Maximum type safety
-- `declaration: true` - Generates `.d.ts` files
-- `target: ES2020` - Modern JavaScript
+- `declaration: true` - Generates `.d.ts`
+- `target: ES2020` - Modern JS
 - `module: ESNext` - ESM modules
 
-## Dependencies
-
-**Runtime**: None - This is a pure TypeScript package
-
-**Development**:
-
-- `typescript: ^5.9.3`
-
 ## Package Structure
-
 ```
-@sottosviluppo/filcronet-core/
-├── dist/                  # Compiled JavaScript + .d.ts
+@sottosviluppo/core/
+├── dist/              # Compiled output
 │   ├── index.js
 │   ├── index.d.ts
 │   └── ...
 ├── src/
-│   ├── enums/            # Enumerations
-│   ├── interfaces/       # Type definitions
-│   ├── types/            # Utility types
-│   ├── utils/            # Validators
-│   └── index.ts          # Main export
+│   ├── enums/        # Enumerations
+│   ├── interfaces/   # Type definitions
+│   ├── types/        # Utility types
+│   ├── utils/        # Validators
+│   └── index.ts
 ├── package.json
 ├── tsconfig.json
 └── README.md
 ```
 
-## Migration to @filcronet (Future)
+## Version
 
-When the `filcronet` organization becomes available:
+Current version: **0.1.0** (Pre-release)
 
-- Package will be republished as `@filcronet/core`
-- Old `@sottosviluppo/filcronet-core` will be deprecated with migration notice
-- No breaking changes - just scope rename
+⚠️ **Pre-1.0.0 Status**: API may change. Not for production until 1.0.0.
 
-## Changelog
+## Examples
 
-### v0.1.0 (Initial Release)
-
-- ✨ Core interfaces (User, Role, Permission)
-- ✨ API response types with pagination
-- ✨ GDPR-compliant password validator
-- ✨ i18n support for validation errors
-- ✨ TypeScript utility types
-- 📚 Comprehensive documentation
+See [examples/auth](../../examples/auth) for usage with:
+- NestJS backend
+- Vue 3 frontend
+- Password validation
+- API response formatting
 
 ## License
 
 UNLICENSED - Private package for Filcronet internal use
-
-## Support
-
-For issues or questions:
-
-- Check the [main framework documentation](../../README.md)
-- Contact the Filcronet development team
-- Review individual package READMEs for integration examples

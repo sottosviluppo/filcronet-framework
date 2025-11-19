@@ -3,6 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { FilcronetAuthModule } from '@sottosviluppo/auth-backend';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { PermissionAction } from '@sottosviluppo/core';
 
 @Module({
   imports: [
@@ -29,6 +30,25 @@ import { TypeOrmModule } from '@nestjs/typeorm';
         expiresIn: '7d', // New user set password token expiration
       },
       defaultRoles: ['user'], // Default roles for new user
+      resources: [
+        {
+          name: 'users',
+          description: 'User management',
+        },
+        {
+          name: 'roles',
+          description: 'Role management',
+        },
+        {
+          name: 'products',
+          description: 'Product catalog',
+          actions: [PermissionAction.CREATE, PermissionAction.DELETE, PermissionAction.READ], // Optional: limit actions
+        },
+        {
+          name: 'orders',
+          description: 'Order management',
+        },
+      ],
     }),
   ],
   controllers: [AppController],
