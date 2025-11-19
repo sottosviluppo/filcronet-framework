@@ -3,6 +3,8 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  forwardRef,
+  Inject,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
@@ -40,6 +42,7 @@ export class UserService {
     private userRepository: Repository<UserEntity>,
     @InjectRepository(RoleEntity)
     private roleRepository: Repository<RoleEntity>,
+    @Inject(forwardRef(() => PasswordRecoveryService))
     private readonly passwordRecoveryService: PasswordRecoveryService
   ) {}
 

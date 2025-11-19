@@ -4,6 +4,7 @@ import {
   BadRequestException,
   Inject,
   Optional,
+  forwardRef,
 } from "@nestjs/common";
 import { UserService } from "./user.service";
 import { AuthService } from "./auth.service";
@@ -21,8 +22,10 @@ import { UserStatus } from "@sottosviluppo/core";
 @Injectable()
 export class PasswordRecoveryService {
   constructor(
-    private userService: UserService,
-    private authService: AuthService,
+    @Inject(forwardRef(() => UserService))
+    private readonly userService: UserService,
+    @Inject(forwardRef(() => UserService))
+    private readonly authService: AuthService,
     @Inject("AUTH_OPTIONS")
     private options: AuthModuleOptions,
     @Optional()

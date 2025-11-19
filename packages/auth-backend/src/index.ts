@@ -52,3 +52,4 @@ export * from "./interfaces/auth-module-options.interface";
 export * from "./interfaces/auth-response.interface";
 export * from "./interfaces/jwt-payload.interface";
 export * from "./interfaces/email-service.interface";
+export * from "./interfaces/user-invitation.interface";
