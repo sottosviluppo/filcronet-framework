@@ -38,6 +38,7 @@ import { BootstrapService } from "./services/bootstrap.service";
  * - Role-based access control (RBAC)
  * - Permission-based authorization
  * - User, Role and Permission management
+ * - Password recovery and invitation flows
  *
  * @export
  * @class FilcronetAuthModule
@@ -57,13 +58,31 @@ export class FilcronetAuthModule {
    * ```typescript
    * @Module({
    *   imports: [
+   *     MailerModule.forRoot({ ... }),
    *     FilcronetAuthModule.forRoot({
    *       jwt: {
    *         secret: process.env.JWT_SECRET,
+   *         expiresIn: '15m',
+   *         refreshExpiresIn: '7d',
+   *       },
+   *       passwordReset: {
+   *         expiresIn: '15m',
+   *       },
+   *       invitation: {
    *         expiresIn: '7d',
    *       },
-   *       defaultRoles: ['user', 'admin'],
+   *       resources: [
+   *         { name: 'users', description: 'User management' },
+   *         { name: 'products', description: 'Product catalog' },
+   *       ],
    *     }),
+   *   ],
+   *   providers: [
+   *     EmailService,
+   *     {
+   *       provide: 'EMAIL_SERVICE',
+   *       useExisting: EmailService,
+   *     },
    *   ],
    * })
    * export class AppModule {}
@@ -78,7 +97,7 @@ export class FilcronetAuthModule {
         JwtModule.register({
           secret: options.jwt.secret,
           signOptions: {
-            expiresIn: options.jwt.expiresIn ?? "7d",
+            expiresIn: options.jwt.expiresIn ?? "15m",
           },
         }),
       ],

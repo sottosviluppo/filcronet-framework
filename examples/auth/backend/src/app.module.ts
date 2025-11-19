@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { FilcronetAuthModule } from '@sottosviluppo/auth-backend';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PermissionAction } from '@sottosviluppo/core';
+import { MailerModule } from '@nestjs-modules/mailer';
+import { EmailModule } from './email.module';
 
 @Module({
   imports: [
@@ -17,6 +17,18 @@ import { PermissionAction } from '@sottosviluppo/core';
       autoLoadEntities: true,
       synchronize: true, // Only in development
     }),
+    MailerModule.forRoot({
+      transport: {
+        host: 'localhost',
+        port: 1025,
+        ignoreTLS: true,
+        secure: false,
+      },
+      defaults: {
+        from: '"Auth Module" <noreply@example.com>',
+      },
+    }),
+    EmailModule,
     FilcronetAuthModule.forRoot({
       jwt: {
         secret: 'dn874fb3847fb4384f7b3',
@@ -55,7 +67,5 @@ import { PermissionAction } from '@sottosviluppo/core';
       ],
     }),
   ],
-  controllers: [AppController],
-  providers: [AppService],
 })
 export class AppModule {}

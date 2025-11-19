@@ -24,7 +24,7 @@ export class PasswordRecoveryService {
   constructor(
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
-    @Inject(forwardRef(() => UserService))
+    @Inject(forwardRef(() => AuthService))
     private readonly authService: AuthService,
     @Inject("AUTH_OPTIONS")
     private options: AuthModuleOptions,

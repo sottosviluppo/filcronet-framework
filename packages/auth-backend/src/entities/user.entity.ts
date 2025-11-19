@@ -36,8 +36,8 @@ export class UserEntity implements IUser {
   @Column({ nullable: true })
   lastName?: string;
 
-  @Column({ select: false })
-  password: string;
+  @Column({ select: false, nullable: true })
+  password?: string;
 
   @Column({
     type: "enum",
@@ -89,6 +89,9 @@ export class UserEntity implements IUser {
    * @memberof UserEntity
    */
   async validatePassword(password: string): Promise<boolean> {
+    if (!this.password) {
+      return false;
+    }
     return bcrypt.compare(password, this.password);
   }
 

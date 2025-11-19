@@ -68,18 +68,6 @@ export interface AuthModuleOptions {
   resources: ResourceDefinition[];
 
   /**
-   * Email configuration for password recovery and invitations
-   * Optional - if not provided, email features will be disabled
-   */
-  email?: {
-    /**
-     * Email service to use
-     * Must implement IEmailService interface
-     */
-    service?: any;
-  };
-
-  /**
    * Password reset token configuration
    */
   passwordReset?: {
