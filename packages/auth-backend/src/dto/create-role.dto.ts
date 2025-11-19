@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ICreateRoleDto } from "@sottosviluppo/core";
-import { IsArray, IsOptional, IsString, IsUUID } from "class-validator";
+import { IsArray, IsNotEmpty, IsOptional, IsString, IsUUID } from "class-validator";
 
 /**
  * Data Transfer Object for creating a new role
@@ -21,6 +21,7 @@ export class CreateRoleDto implements ICreateRoleDto {
     description: "Name",
     example: "user",
   })
+  @IsNotEmpty()
   @IsString()
   name: string;
 

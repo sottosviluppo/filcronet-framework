@@ -137,7 +137,7 @@ export interface ICreateUserDto {
    *
    * @type {string}
    */
-  password: string;
+  password?: string;
 
   /**
    * Array of role IDs to assign to the user

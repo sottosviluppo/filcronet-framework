@@ -447,12 +447,6 @@ For other validation:
 └── README.md
 ```
 
-## Version
-
-Current version: **0.1.0** (Pre-release)
-
-⚠️ **Pre-1.0.0 Status**: API may change. Not for production until 1.0.0.
-
 ## Examples
 
 See [examples/auth](../../examples/auth) for usage with:

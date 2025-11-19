@@ -21,12 +21,6 @@ Authentication composables, stores and utilities for Vue 3 applications with ful
 pnpm add @sottosviluppo/auth-frontend @sottosviluppo/core
 ```
 
-### Peer Dependencies
-
-```bash
-pnpm add vue@^3.5.0 pinia axios zod
-```
-
 ## Quick Start
 
 ### 1. Setup Pinia (if not already done)

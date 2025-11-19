@@ -87,6 +87,13 @@ export class AuthService {
       roleIds: [defaultRole.id],
     });
 
+    if ("invitationToken" in user) {
+      // This should NEVER happen in register (password is always provided)
+      throw new BadRequestException(
+        "Unexpected invitation flow during registration"
+      );
+    }
+
     const tokens = await this.generateTokenPair(user);
 
     return {

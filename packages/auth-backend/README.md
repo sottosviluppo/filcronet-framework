@@ -9,6 +9,7 @@ Complete authentication and authorization module for NestJS applications with Ty
 - 🛡️ Role-based access control (RBAC)
 - ✅ Dynamic permission system (configure resources per project)
 - 🔑 Password recovery and invitation flows
+- 📧 User invitation system (create users without password)
 - 🔒 **GDPR-compliant password validation** (ENISA guidelines)
 - 🚀 Auto-bootstrap: roles and permissions created on first startup
 - 🎯 Initial setup endpoint for first super-admin user
@@ -21,14 +22,6 @@ Complete authentication and authorization module for NestJS applications with Ty
 
 ```bash
 pnpm add @sottosviluppo/auth-backend @sottosviluppo/core
-```
-
-### Peer Dependencies
-
-```bash
-pnpm add @nestjs/common @nestjs/core @nestjs/jwt @nestjs/passport @nestjs/typeorm @nestjs/swagger
-pnpm add typeorm passport passport-jwt class-validator class-transformer rxjs reflect-metadata bcrypt
-pnpm add -D @types/passport-jwt @types/bcrypt
 ```
 
 ## Quick Start
@@ -251,13 +244,14 @@ Content-Type: application/json
 
 ### Users (Protected)
 
-| Method   | Endpoint        | Permission Required |
-| -------- | --------------- | ------------------- |
-| `GET`    | `/v1/users`     | `users:list`        |
-| `POST`   | `/v1/users`     | `users:create`      |
-| `GET`    | `/v1/users/:id` | `users:read`        |
-| `PATCH`  | `/v1/users/:id` | `users:update`      |
-| `DELETE` | `/v1/users/:id` | `users:delete`      |
+| Method   | Endpoint                          | Permission Required |
+| -------- | --------------------------------- | ------------------- |
+| `GET`    | `/v1/users`                       | `users:list`        |
+| `POST`   | `/v1/users`                       | `users:create`      |
+| `GET`    | `/v1/users/:id`                   | `users:read`        |
+| `PATCH`  | `/v1/users/:id`                   | `users:update`      |
+| `DELETE` | `/v1/users/:id`                   | `users:delete`      |
+| `POST`   | `/v1/users/:id/resend-invitation` | `users:update`      |
 
 ### Roles (Protected)
 
@@ -365,6 +359,153 @@ PATCH /v1/roles/:roleId
 ✅ **Scalable**: Add resources without touching core package  
 ✅ **Type-safe**: Actions are still strongly typed  
 ✅ **Lightweight**: Only generate permissions you need
+
+## User Invitation System
+
+### Overview
+
+Admins can create users **without passwords**. The system automatically generates an invitation token and URL that can be sent to the user via email.
+
+### Workflow
+
+#### 1. Admin Creates User Without Password
+
+```bash
+POST /v1/users
+Authorization: Bearer <admin-token>
+Content-Type: application/json
+
+{
+  "email": "newuser@example.com",
+  "firstName": "Jane",
+  "lastName": "Doe",
+  "invitationUrl": "https://app.example.com/set-password",
+  "roleIds": ["<editor-role-uuid>"]
+}
+```
+
+**Response:**
+
+```json
+{
+  "user": {
+    "id": "user-uuid",
+    "email": "newuser@example.com",
+    "firstName": "Jane",
+    "lastName": "Doe",
+    "status": "inactive",
+    "roles": [...]
+  },
+  "invitationToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "invitationUrl": "https://app.example.com/set-password?token=eyJhbGc...",
+  "message": "User created successfully. Invitation token generated (send to user via email)."
+}
+```
+
+**Key Points:**
+
+- ✅ User created with `status: "inactive"`
+- ✅ `invitationToken` can be stored or sent via custom email template
+- ✅ `invitationUrl` is the complete URL ready to send
+- ✅ Token expires after 7 days (configurable)
+
+#### 2. User Sets Password
+
+User receives email and clicks on invitation link:
+
+```bash
+POST /v1/auth/set-password
+Content-Type: application/json
+
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "password": "MyNewP@ss2024"
+}
+```
+
+**Response:**
+
+```json
+{
+  "message": "Password set successfully"
+}
+```
+
+**What happens:**
+
+- ✅ Password is set and hashed
+- ✅ User status changes: `inactive` → `active`
+- ✅ User can now login
+
+#### 3. Resend Invitation (if token expires)
+
+```bash
+POST /v1/users/:userId/resend-invitation
+Authorization: Bearer <admin-token>
+Content-Type: application/json
+
+{
+  "invitationUrl": "https://app.example.com/set-password"
+}
+```
+
+**Response:**
+
+```json
+{
+  "invitationToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "invitationUrl": "https://app.example.com/set-password?token=eyJhbGc...",
+  "message": "Invitation token generated successfully"
+}
+```
+
+### Create User WITH Password
+
+Admins can also create users with passwords directly:
+
+```bash
+POST /v1/users
+Authorization: Bearer <admin-token>
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "password": "SecurePass123!",
+  "firstName": "John",
+  "roleIds": ["<user-role-uuid>"]
+}
+```
+
+**Response:**
+
+```json
+{
+  "user": {
+    "id": "user-uuid",
+    "email": "user@example.com",
+    "status": "pending_verification",
+    "roles": [...]
+  },
+  "message": "User created successfully"
+}
+```
+
+**Key Differences:**
+
+- ✅ User created with `status: "pending_verification"`
+- ✅ No invitation token/URL in response
+- ✅ User can login immediately
+
+### Invitation vs Password Reset
+
+| Feature         | Invitation                  | Password Reset                  |
+| --------------- | --------------------------- | ------------------------------- |
+| **Use Case**    | New user (no password yet)  | Existing user (forgot password) |
+| **Token Type**  | `invitation`                | `password_reset`                |
+| **Expiration**  | 7 days (default)            | 1 hour (default)                |
+| **Endpoint**    | `/auth/set-password`        | `/auth/reset-password`          |
+| **User Status** | `inactive` → `active`       | Remains `active`                |
+| **Validation**  | Checks user has NO password | Checks user HAS password        |
 
 ## Usage Examples
 
@@ -566,34 +707,40 @@ Authorization: Bearer <access-token>
 }
 ```
 
-### 3. Create User and Assign Role
+### 3. Create User with Invitation
 
 ```bash
-# Create user without password (invitation flow)
+# Create user without password
 POST /v1/users
 Authorization: Bearer <admin-token>
 
 {
   "email": "editor@example.com",
+  "firstName": "Jane",
+  "lastName": "Editor",
+  "invitationUrl": "https://app.example.com/set-password",
   "roleIds": ["<content-editor-role-uuid>"]
-  # No password - user will receive invitation
 }
 
-# Generate invitation (internal service call)
-const { invitationUrl } = await passwordRecoveryService.generateInvitation(
-  userId,
-  "https://app.com/set-password"
-);
+# Response includes invitation token and URL
+# Send invitationUrl to user via email
 
-# User sets password via invitation link
+# User sets password
 POST /v1/auth/set-password
 {
   "token": "<invitation-token>",
   "password": "MyNewP@ss2024"
 }
+
+# User can now login
+POST /v1/auth/login
+{
+  "email": "editor@example.com",
+  "password": "MyNewP@ss2024"
+}
 ```
 
-### 4. Password Recovery
+### 4. Password Recovery (Existing User)
 
 ```bash
 # User forgets password
@@ -851,11 +998,21 @@ BadRequestException: Invalid role configuration
 
 **Solution**: This is expected. The endpoint only works with empty database. Login with existing admin or create users via `/v1/users`
 
-## Version
+### User Already Has Password (Invitation)
 
-Current version: **0.3.0** (Pre-release)
+```
+400 BadRequest: User already has password. Use password reset instead.
+```
 
-⚠️ **Pre-1.0.0 Status**: API may change between minor versions. Not recommended for production until 1.0.0.
+**Solution**: Use `/v1/users/:id/resend-invitation` only for users created without password. For existing users, use password reset flow.
+
+### Invitation Token Expired
+
+```
+401 Unauthorized: Invalid or expired token
+```
+
+**Solution**: Use `/v1/users/:id/resend-invitation` to generate new invitation token
 
 ## Related Packages
 

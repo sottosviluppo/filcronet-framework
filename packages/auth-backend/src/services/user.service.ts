@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  BadRequestException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
@@ -14,6 +15,8 @@ import {
   IPaginatedResponse,
   UserStatus,
 } from "@sottosviluppo/core";
+import { PasswordRecoveryService } from "./password-recovery.service";
+import { UserCreatedWithInvitation } from "../interfaces/user-invitation.interface";
 
 /**
  * Internal type for user creation with additional fields
@@ -36,19 +39,23 @@ export class UserService {
     @InjectRepository(UserEntity)
     private userRepository: Repository<UserEntity>,
     @InjectRepository(RoleEntity)
-    private roleRepository: Repository<RoleEntity>
+    private roleRepository: Repository<RoleEntity>,
+    private readonly passwordRecoveryService: PasswordRecoveryService
   ) {}
 
   /**
    * Creates a new user with validation
-   * Checks for existing email/username and assigns default or specified roles
+   * If password is not provided, generates invitation token
    *
-   * @param {InternalCreateUserDto} createUserDto - User creation data (can include status)
-   * @returns {Promise<UserEntity>} Created user entity
+   * @param {InternalCreateUserDto} createUserDto - User creation data
+   * @returns {Promise<UserEntity | UserCreatedWithInvitation>} Created user (with invitation if no password)
    * @throws {ConflictException} If email or username already exists
+   * @throws {BadRequestException} If invitation required but no URL provided
    * @memberof UserService
    */
-  async create(createUserDto: InternalCreateUserDto): Promise<UserEntity> {
+  async create(
+    createUserDto: InternalCreateUserDto
+  ): Promise<UserEntity | UserCreatedWithInvitation> {
     // Check if email already exists
     const existingUser = await this.userRepository.findOne({
       where: { email: createUserDto.email },
@@ -85,6 +92,15 @@ export class UserService {
       }
     }
 
+    // Determine status based on whether password is provided
+    let status = createUserDto.status;
+    if (!status) {
+      status = createUserDto.password
+        ? UserStatus.PENDING_VERIFICATION
+        : UserStatus.INACTIVE;
+    }
+
+    // Create user (password can be undefined)
     const user = this.userRepository.create({
       email: createUserDto.email,
       username: createUserDto.username,
@@ -92,10 +108,34 @@ export class UserService {
       lastName: createUserDto.lastName,
       password: createUserDto.password,
       roles,
-      status: createUserDto.status ?? UserStatus.PENDING_VERIFICATION, // ✅ Ora funziona
+      status,
     });
 
-    return this.userRepository.save(user);
+    const savedUser = await this.userRepository.save(user);
+
+    // If no password provided, generate invitation
+    if (!createUserDto.password) {
+      if (!createUserDto.invitationUrl) {
+        throw new BadRequestException(
+          "invitationUrl is required when creating user without password"
+        );
+      }
+
+      const { token, invitationUrl } =
+        await this.passwordRecoveryService.generateInvitation(
+          savedUser.id,
+          createUserDto.invitationUrl
+        );
+
+      return {
+        user: savedUser,
+        invitationToken: token,
+        invitationUrl,
+      };
+    }
+
+    // User created with password, return normally
+    return savedUser;
   }
 
   /**
@@ -267,5 +307,39 @@ export class UserService {
     await this.userRepository.update(userId, {
       lastLoginAt: new Date(),
     });
+  }
+
+  /**
+   * Generates new invitation for user who hasn't set password
+   *
+   * @param {string} userId - User UUID
+   * @param {string} invitationUrlBase - Base URL for invitation
+   * @returns {Promise<{ token: string; invitationUrl: string }>}
+   * @throws {BadRequestException} If user already has password
+   * @memberof UserService
+   */
+  async resendInvitation(
+    userId: string,
+    invitationUrlBase: string
+  ): Promise<{ token: string; invitationUrl: string }> {
+    const user = await this.findOne(userId);
+
+    // Check if user has password
+    const userWithPassword = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ["id", "password"],
+    });
+
+    if (userWithPassword?.password) {
+      throw new BadRequestException(
+        "User already has password. Use password reset instead."
+      );
+    }
+
+    // Generate new invitation
+    return this.passwordRecoveryService.generateInvitation(
+      userId,
+      invitationUrlBase
+    );
   }
 }

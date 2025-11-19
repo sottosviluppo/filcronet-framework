@@ -5,6 +5,7 @@ import {
   HttpCode,
   HttpStatus,
   ConflictException,
+  BadRequestException,
 } from "@nestjs/common";
 import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 import { UserService } from "../services/user.service";
@@ -77,12 +78,23 @@ export class SetupController {
       );
     }
 
+    if (!createUserDto.password) {
+      throw new BadRequestException(
+        "Password is required for initial admin setup"
+      );
+    }
+
     // Create super-admin user
     const user = await this.userService.create({
       ...createUserDto,
       roleIds: [superAdminRole.id],
       status: UserStatus.ACTIVE, // Directly active
     });
+
+    if ("invitationToken" in user) {
+      // This should NEVER happen (password is provided above)
+      throw new BadRequestException("Unexpected invitation flow during setup");
+    }
 
     return {
       message: "Super-admin user created successfully",

@@ -42,7 +42,11 @@ import { PermissionAction } from '@sottosviluppo/core';
         {
           name: 'products',
           description: 'Product catalog',
-          actions: [PermissionAction.CREATE, PermissionAction.DELETE, PermissionAction.READ], // Optional: limit actions
+          actions: [
+            PermissionAction.CREATE,
+            PermissionAction.DELETE,
+            PermissionAction.READ,
+          ], // Optional: limit actions
         },
         {
           name: 'orders',

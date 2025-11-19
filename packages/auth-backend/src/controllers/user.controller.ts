@@ -11,6 +11,7 @@ import {
   HttpCode,
   HttpStatus,
   ParseUUIDPipe,
+  BadRequestException,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -27,6 +28,10 @@ import { PermissionsGuard } from "../guards/permissions.guard";
 import { RequirePermissions } from "../decorators/require-permissions.decorator";
 import { IPaginatedResponse, IPaginationParams } from "@sottosviluppo/core";
 import { UserEntity } from "../entities/user.entity";
+import {
+  CreateUserResponse,
+  CreateUserWithInvitationResponse,
+} from "../interfaces/user-invitation.interface";
 
 /**
  * Controller handling user management endpoints
@@ -47,19 +52,52 @@ export class UserController {
 
   /**
    * Creates a new user (admin only)
+   * If password is not provided, generates and returns invitation token
    *
    * @param {CreateUserDto} createUserDto - User creation data
-   * @returns {Promise<UserEntity>} Created user
+   * @returns {Promise<CreateUserResponse | CreateUserWithInvitationResponse>}
    * @memberof UserController
    */
   @Post()
   @RequirePermissions("users:create")
-  @ApiOperation({ summary: "Create a new user" })
-  @ApiResponse({ status: 201, description: "User successfully created" })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: "Create a new user",
+    description:
+      "Creates a new user. If password is not provided, generates invitation token for user to set password.",
+  })
+  @ApiResponse({
+    status: 201,
+    description:
+      "User successfully created (with invitation token if no password provided)",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "Invalid data or missing invitationUrl",
+  })
   @ApiResponse({ status: 409, description: "Email or username already exists" })
   @ApiResponse({ status: 403, description: "Insufficient permissions" })
-  async create(@Body() createUserDto: CreateUserDto): Promise<UserEntity> {
-    return this.userService.create(createUserDto);
+  async create(
+    @Body() createUserDto: CreateUserDto
+  ): Promise<CreateUserResponse | CreateUserWithInvitationResponse> {
+    const result = await this.userService.create(createUserDto);
+
+    // Check if invitation was generated
+    if ("invitationToken" in result) {
+      return {
+        user: result.user.toSafeObject(),
+        invitationToken: result.invitationToken,
+        invitationUrl: result.invitationUrl,
+        message:
+          "User created successfully. Invitation token generated (send to user via email).",
+      };
+    }
+
+    // User created with password
+    return {
+      user: result.toSafeObject(),
+      message: "User created successfully",
+    };
   }
 
   /**
@@ -97,7 +135,9 @@ export class UserController {
     description: "Sort order (default: ASC)",
   })
   @ApiResponse({ status: 200, description: "User list retrieved successfully" })
-  async findAll(@Query() pagination: IPaginationParams): Promise<IPaginatedResponse<UserEntity>> {
+  async findAll(
+    @Query() pagination: IPaginationParams
+  ): Promise<IPaginatedResponse<UserEntity>> {
     return this.userService.findAll(pagination);
   }
 
@@ -153,5 +193,57 @@ export class UserController {
   @ApiResponse({ status: 404, description: "User not found" })
   async remove(@Param("id", ParseUUIDPipe) id: string): Promise<void> {
     await this.userService.remove(id);
+  }
+
+  /**
+   * Resends invitation to user who hasn't set password yet
+   *
+   * @param {string} id - User UUID
+   * @param {object} body - Invitation URL
+   * @returns {Promise<object>}
+   * @memberof UserController
+   */
+  @Post(":id/resend-invitation")
+  @RequirePermissions("users:update")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Resend invitation to user",
+    description:
+      "Generates new invitation token for user who hasn't set password",
+  })
+  @ApiResponse({
+    status: 200,
+    description: "Invitation token generated successfully",
+  })
+  @ApiResponse({
+    status: 400,
+    description: "User already has password set",
+  })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async resendInvitation(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body("invitationUrl") invitationUrl: string
+  ): Promise<{
+    invitationToken: string;
+    invitationUrl: string;
+    message: string;
+  }> {
+    const user = await this.userService.findOne(id);
+
+    // Check if user already has password
+    const userWithPassword = await this.userService.findByEmail(user.email);
+    if (userWithPassword?.password) {
+      throw new BadRequestException(
+        "User already has password set. Use password reset instead."
+      );
+    }
+
+    const result = await this.userService.resendInvitation(id, invitationUrl);
+
+    return {
+      invitationToken: result.token,
+      invitationUrl: result.invitationUrl,
+      message: "Invitation token generated successfully",
+    };
   }
 }

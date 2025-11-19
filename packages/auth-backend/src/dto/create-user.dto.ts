@@ -4,9 +4,12 @@ import {
   IsOptional,
   IsArray,
   IsUUID,
+  Validate,
+  MinLength,
 } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { ICreateUserDto } from "@sottosviluppo/core";
+import { IsStrongPasswordConstraint } from "../validators/is-strong-password.validator";
 
 /**
  * Data Transfer Object for creating a new user
@@ -78,12 +81,17 @@ export class CreateUserDto implements ICreateUserDto {
    * @type {string}
    * @memberof CreateUserDto
    */
-  @ApiProperty({
-    description: "User password",
+  @ApiPropertyOptional({
+    description:
+      "User password (optional - if not provided, invitation email will be sent). GDPR-compliant: min 12 chars, 3 of 4 character types",
     example: "SecureP@ss123",
+    minLength: 12,
   })
+  @IsOptional()
   @IsString()
-  password: string;
+  @MinLength(12, { message: "Password must be at least 12 characters long" })
+  @Validate(IsStrongPasswordConstraint)
+  password?: string;
 
   /**
    * Array of role IDs to assign to the user
@@ -101,4 +109,21 @@ export class CreateUserDto implements ICreateUserDto {
   @IsArray()
   @IsUUID("4", { each: true })
   roleIds?: string[];
+
+  /**
+   * Base URL for invitation link (required if password is not provided)
+   * Example: "https://app.example.com/set-password"
+   * Final URL will be: "https://app.example.com/set-password?token=..."
+   *
+   * @type {string}
+   * @memberof CreateUserDto
+   */
+  @ApiPropertyOptional({
+    description:
+      "Base URL for invitation link (required if password not provided)",
+    example: "https://app.example.com/set-password",
+  })
+  @IsOptional()
+  @IsString()
+  invitationUrl?: string;
 }
