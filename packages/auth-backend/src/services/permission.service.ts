@@ -2,11 +2,11 @@ import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { PermissionEntity } from "../entities/permission.entity";
-import { PermissionAction, PermissionResource } from "@sottosviluppo/core";
+import { PermissionAction } from "@sottosviluppo/core";
 
 /**
  * Service for managing permissions
- * Handles CRUD operations and default permission seeding
+ * Handles CRUD operations and permission seeding
  *
  * @export
  * @class PermissionService
@@ -21,14 +21,14 @@ export class PermissionService {
   /**
    * Creates a new permission or returns existing one
    *
-   * @param {PermissionResource} resource - Resource type (e.g., 'users', 'roles')
+   * @param {string} resource - Resource name (e.g., 'users', 'products')
    * @param {PermissionAction} action - Action type (e.g., 'create', 'read')
    * @param {string} [description] - Optional description
    * @returns {Promise<PermissionEntity>} Created or existing permission entity
    * @memberof PermissionService
    */
   async create(
-    resource: PermissionResource,
+    resource: string,
     action: PermissionAction,
     description?: string
   ): Promise<PermissionEntity> {
@@ -84,13 +84,13 @@ export class PermissionService {
   /**
    * Finds permission by resource and action combination
    *
-   * @param {PermissionResource} resource - Resource type
+   * @param {string} resource - Resource name
    * @param {PermissionAction} action - Action type
    * @returns {Promise<PermissionEntity | null>} Permission entity or null if not found
    * @memberof PermissionService
    */
   async findByResourceAndAction(
-    resource: PermissionResource,
+    resource: string,
     action: PermissionAction
   ): Promise<PermissionEntity | null> {
     return this.permissionRepository.findOne({
@@ -99,21 +99,48 @@ export class PermissionService {
   }
 
   /**
-   * Seeds default permissions for all resource-action combinations
-   * Automatically creates permissions for all enum values
-   * Safe to run multiple times (skips existing permissions)
+   * Finds all permissions for a specific resource
    *
+   * @param {string} resource - Resource name
+   * @returns {Promise<PermissionEntity[]>} Filtered permissions
+   * @memberof PermissionService
+   */
+  async findByResource(resource: string): Promise<PermissionEntity[]> {
+    return this.permissionRepository.find({
+      where: { resource },
+      order: { action: "ASC" },
+    });
+  }
+
+  /**
+   * Seeds permissions for specified resources and actions
+   * Used by BootstrapService to create permissions from configuration
+   *
+   * @param {string[]} resources - Array of resource names
+   * @param {PermissionAction[]} [actions] - Actions to create (defaults to all)
    * @returns {Promise<void>}
    * @memberof PermissionService
    */
-  async seedDefaultPermissions(): Promise<void> {
-    const resources = Object.values(PermissionResource);
-    const actions = Object.values(PermissionAction);
+  async seedPermissions(
+    resources: string[],
+    actions?: PermissionAction[]
+  ): Promise<void> {
+    const actionsToCreate = actions ?? Object.values(PermissionAction);
 
     for (const resource of resources) {
-      for (const action of actions) {
+      for (const action of actionsToCreate) {
         await this.create(resource, action, `${action} ${resource}`);
       }
     }
+  }
+
+  /**
+   * Counts total permissions
+   *
+   * @returns {Promise<number>} Total count
+   * @memberof PermissionService
+   */
+  async count(): Promise<number> {
+    return this.permissionRepository.count();
   }
 }

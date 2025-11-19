@@ -1,3 +1,4 @@
+import { ResourceDefinition } from "@sottosviluppo/core";
 import type { StringValue } from "ms";
 
 /**
@@ -50,6 +51,21 @@ export interface AuthModuleOptions {
    * @type {string[]}
    */
   defaultRoles?: string[];
+
+  /**
+   * Resources for permission system
+   * Define which resources your application has
+   * Permissions will be auto-generated for each resource
+   *
+   * @type {ResourceDefinition[]}
+   * @example
+   * resources: [
+   *   { name: 'users', description: 'User management' },
+   *   { name: 'products', description: 'Product catalog' },
+   *   { name: 'orders', description: 'Order management' },
+   * ]
+   */
+  resources: ResourceDefinition[];
 
   /**
    * Email configuration for password recovery and invitations

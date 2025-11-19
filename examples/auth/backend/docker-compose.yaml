@@ -1,0 +1,25 @@
+volumes:
+  data:
+
+services:
+  db:
+    container_name: 'db'
+    image: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: mydb
+    ports:
+      - 5432:5432
+    volumes:
+      - data:/var/lib/postgresql/data
+    tty: true
+
+  mailer:
+    image: mailhog/mailhog
+    container_name: 'mailer'
+    logging:
+      driver: 'none'
+    ports:
+      - 1025:1025
+      - 8025:8025

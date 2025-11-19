@@ -1,4 +1,4 @@
-import { PermissionAction, PermissionResource } from "../enums";
+import { PermissionAction } from "../enums";
 
 /**
  * Permission entity interface
@@ -20,9 +20,9 @@ export interface IPermission {
    * Resource this permission applies to
    * Examples: 'users', 'products', 'orders'
    *
-   * @type {PermissionResource}
+   * @type {string}
    */
-  resource: PermissionResource;
+  resource: string;
 
   /**
    * Action that can be performed on the resource
@@ -54,15 +54,3 @@ export interface IPermission {
    */
   updatedAt: Date;
 }
-
-/**
- * Type helper for permission strings in format 'resource:action'
- * Used for checking permissions in guards and decorators
- *
- * @export
- * @typedef {PermissionString}
- * @example 'users:read'
- * @example 'products:create'
- * @example 'orders:delete'
- */
-export type PermissionString = `${PermissionResource}:${PermissionAction}`;

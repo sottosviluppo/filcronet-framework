@@ -10,3 +10,4 @@ export * from "./role.interface";
 export * from "./permission.interface";
 export * from "./api-response.interface";
 export * from "./validation-messages.interface";
+export * from "./resource-definition.interface";

@@ -84,17 +84,13 @@ $env:GITHUB_TOKEN="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-Then add to your `.npmrc`:
-
-```
-//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
-```
-
 ### 3. Install Packages
 
 ```bash
 # Core package (required by others)
-pnpm add @sottosviluppo/filcronet-core
+npm install @sottosviluppo/core
+
+pnpm add @sottosviluppo/core
 ```
 
 ### 4. Use in Your Code

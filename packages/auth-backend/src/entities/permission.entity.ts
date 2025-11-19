@@ -5,12 +5,9 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToMany,
+  Index,
 } from "typeorm";
-import {
-  IPermission,
-  PermissionAction,
-  PermissionResource,
-} from "@sottosviluppo/core";
+import { IPermission, PermissionAction } from "@sottosviluppo/core";
 import { RoleEntity } from "./role.entity";
 
 /**
@@ -22,19 +19,18 @@ import { RoleEntity } from "./role.entity";
  * @implements {IPermission}
  */
 @Entity("permissions")
+@Index(["resource", "action"], { unique: true }) // Unique constraint
 export class PermissionEntity implements IPermission {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
   /**
    * Resource type this permission applies to
-   * Examples: 'users', 'products', 'orders'
+   * Examples: 'users', 'products', 'orders', 'blog-posts'
+   * Defined dynamically by each project
    */
-  @Column({
-    type: "enum",
-    enum: PermissionResource,
-  })
-  resource: PermissionResource;
+  @Column({ type: "varchar", length: 100 })
+  resource: string;
 
   /**
    * Action that can be performed on the resource
@@ -57,4 +53,14 @@ export class PermissionEntity implements IPermission {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  /**
+   * Returns permission in string format "resource:action"
+   *
+   * @returns {string} Permission string
+   * @memberof PermissionEntity
+   */
+  toString(): string {
+    return `${this.resource}:${this.action}`;
+  }
 }

@@ -18,11 +18,14 @@ export * from "./services/auth.service";
 export * from "./services/user.service";
 export * from "./services/role.service";
 export * from "./services/permission.service";
+export * from "./services/bootstrap.service";
 
 // Controllers
 export * from "./controllers/auth.controller";
 export * from "./controllers/user.controller";
 export * from "./controllers/role.controller";
+export * from "./controllers/permission.controller";
+export * from "./controllers/setup.controller";
 
 // DTOs
 export * from "./dto/login.dto";

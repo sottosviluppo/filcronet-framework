@@ -26,6 +26,10 @@ import { PermissionsGuard } from "./guards/permissions.guard";
 
 // Interfaces
 import { AuthModuleOptions } from "./interfaces/auth-module-options.interface";
+import { PasswordRecoveryService } from "./services/password-recovery.service";
+import { PermissionController } from "./controllers/permission.controller";
+import { SetupController } from "./controllers/setup.controller";
+import { BootstrapService } from "./services/bootstrap.service";
 
 /**
  * Filcronet Authentication Module
@@ -78,7 +82,13 @@ export class FilcronetAuthModule {
           },
         }),
       ],
-      controllers: [AuthController, UserController, RoleController],
+      controllers: [
+        AuthController,
+        UserController,
+        RoleController,
+        PermissionController,
+        SetupController,
+      ],
       providers: [
         {
           provide: "AUTH_OPTIONS",
@@ -88,6 +98,8 @@ export class FilcronetAuthModule {
         UserService,
         RoleService,
         PermissionService,
+        PasswordRecoveryService,
+        BootstrapService,
         JwtStrategy,
         JwtAuthGuard,
         PermissionsGuard,
@@ -97,6 +109,7 @@ export class FilcronetAuthModule {
         UserService,
         RoleService,
         PermissionService,
+        PasswordRecoveryService,
         JwtAuthGuard,
         PermissionsGuard,
       ],

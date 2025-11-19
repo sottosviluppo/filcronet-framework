@@ -33,7 +33,9 @@ export class RoleService {
    * @throws {ConflictException} If role name already exists
    * @memberof RoleService
    */
-  async create(createRoleDto: ICreateRoleDto): Promise<RoleEntity> {
+  async create(
+    createRoleDto: ICreateRoleDto & { isSystem?: boolean }
+  ): Promise<RoleEntity> {
     const existing = await this.roleRepository.findOne({
       where: { name: createRoleDto.name },
     });
@@ -52,8 +54,10 @@ export class RoleService {
     }
 
     const role = this.roleRepository.create({
-      ...createRoleDto,
+      name: createRoleDto.name,
+      description: createRoleDto.description,
       permissions,
+      isSystem: createRoleDto.isSystem ?? false,
     });
 
     return this.roleRepository.save(role);

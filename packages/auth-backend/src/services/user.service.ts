@@ -9,7 +9,19 @@ import { UserEntity } from "../entities/user.entity";
 import { RoleEntity } from "../entities/role.entity";
 import { CreateUserDto } from "../dto/create-user.dto";
 import { UpdateUserDto } from "../dto/update-user.dto";
-import { IPaginationParams, IPaginatedResponse } from "@sottosviluppo/core";
+import {
+  IPaginationParams,
+  IPaginatedResponse,
+  UserStatus,
+} from "@sottosviluppo/core";
+
+/**
+ * Internal type for user creation with additional fields
+ * Allows services to pass extra data not exposed in public DTO
+ */
+type InternalCreateUserDto = CreateUserDto & {
+  status?: UserStatus;
+};
 
 /**
  * Service for managing user-related operations
@@ -31,12 +43,12 @@ export class UserService {
    * Creates a new user with validation
    * Checks for existing email/username and assigns default or specified roles
    *
-   * @param {CreateUserDto} createUserDto - User creation data
+   * @param {InternalCreateUserDto} createUserDto - User creation data (can include status)
    * @returns {Promise<UserEntity>} Created user entity
    * @throws {ConflictException} If email or username already exists
    * @memberof UserService
    */
-  async create(createUserDto: CreateUserDto): Promise<UserEntity> {
+  async create(createUserDto: InternalCreateUserDto): Promise<UserEntity> {
     // Check if email already exists
     const existingUser = await this.userRepository.findOne({
       where: { email: createUserDto.email },
@@ -74,11 +86,26 @@ export class UserService {
     }
 
     const user = this.userRepository.create({
-      ...createUserDto,
+      email: createUserDto.email,
+      username: createUserDto.username,
+      firstName: createUserDto.firstName,
+      lastName: createUserDto.lastName,
+      password: createUserDto.password,
       roles,
+      status: createUserDto.status ?? UserStatus.PENDING_VERIFICATION, // ✅ Ora funziona
     });
 
     return this.userRepository.save(user);
+  }
+
+  /**
+   * Counts total users in the system
+   *
+   * @returns {Promise<number>} Total user count
+   * @memberof UserService
+   */
+  async count(): Promise<number> {
+    return this.userRepository.count();
   }
 
   /**

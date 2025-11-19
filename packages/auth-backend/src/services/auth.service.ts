@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   Inject,
+  Logger,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UserService } from "./user.service";
@@ -34,6 +35,8 @@ interface AuthResponseWithTokens {
  */
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private userService: UserService,
     private roleService: RoleService,
@@ -52,10 +55,27 @@ export class AuthService {
    * @memberof AuthService
    */
   async register(registerDto: RegisterDto): Promise<AuthResponseWithTokens> {
-    const defaultRole = await this.roleService.findByName("user");
+    // Try to find default role
+    let defaultRole = await this.roleService.findByName("user");
 
+    // If no default role exists, try to create it (bootstrap may have failed)
     if (!defaultRole) {
-      throw new BadRequestException("Invalid role configuration");
+      this.logger.warn(
+        'Default "user" role not found, attempting to create it'
+      );
+
+      try {
+        defaultRole = await this.roleService.create({
+          name: "user",
+          description: "Standard user with basic access",
+          permissionIds: [],
+          isSystem: true,
+        });
+      } catch (error) {
+        throw new BadRequestException(
+          "Unable to register user: default role configuration is invalid. Please contact system administrator."
+        );
+      }
     }
 
     const user = await this.userService.create({
