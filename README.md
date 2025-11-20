@@ -8,8 +8,6 @@ Internal monorepo framework for Filcronet custom software projects.
 - **[@sottosviluppo/filcronet-auth-backend](./packages/auth-backend)** - NestJS authentication module with RBAC
 - **[@sottosviluppo/filcronet-auth-frontend](./packages/auth-frontend)** - Vue 3 authentication composables with i18n support
 
-> **Note**: Packages are temporarily published under `@sottosviluppo` scope. They will be migrated to `@filcronet` scope when the organization becomes available.
-
 ## 🛠 Tech Stack
 
 - **Monorepo**: pnpm workspaces
@@ -123,9 +121,6 @@ pnpm dev
 
 # Clean build artifacts
 pnpm clean
-
-# Clean everything
-pnpm clean:all
 ```
 
 ### Version Management
@@ -134,13 +129,13 @@ Bump package versions following [Semantic Versioning](https://semver.org/):
 
 ```bash
 # Bug fixes: 0.1.0 → 0.1.1
-pnpm version:patch
+pnpm version patch
 
 # New features: 0.1.0 → 0.2.0
-pnpm version:minor
+pnpm version minor
 
 # Breaking changes: 0.1.0 → 1.0.0
-pnpm version:major
+pnpm version major
 ```
 
 After version bump:
@@ -149,7 +144,7 @@ After version bump:
 git add .
 git commit -m "chore: bump version to X.X.X"
 pnpm build
-pnpm -r publish
+pnpm publish
 git push
 ```
 
@@ -165,13 +160,13 @@ git push
 
 ```bash
 # Fixed a bug
-pnpm version:patch && pnpm build && pnpm -r publish
+pnpm version patch && pnpm build && pnpm publish
 
 # Added new composable
-pnpm version:minor && pnpm build && pnpm -r publish
+pnpm version minor && pnpm build && pnpm publish
 
 # Renamed IUser interface (breaking!)
-pnpm version:major && pnpm build && pnpm -r publish
+pnpm version major && pnpm build && pnpm publish
 ```
 
 ## 📤 Publishing (For Maintainers)
@@ -217,13 +212,13 @@ pnpm config set //npm.pkg.github.com/:_authToken ${GITHUB_TOKEN}
 
 ```bash
 # Patch version (0.1.0 → 0.1.1)
-pnpm version:patch
+pnpm version patch
 
 # Minor version (0.1.0 → 0.2.0)
-pnpm version:minor
+pnpm version minor
 
 # Major version (0.1.0 → 1.0.0)
-pnpm version:major
+pnpm version major
 ```
 
 #### 4. Build Packages
@@ -235,7 +230,7 @@ pnpm build
 #### 5. Publish to GitHub Packages
 
 ```bash
-pnpm -r publish
+pnpm publish
 ```
 
 This will publish all packages to:
