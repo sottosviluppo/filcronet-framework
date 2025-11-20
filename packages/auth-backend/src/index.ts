@@ -53,3 +53,6 @@ export * from "./interfaces/auth-response.interface";
 export * from "./interfaces/jwt-payload.interface";
 export * from "./interfaces/email-service.interface";
 export * from "./interfaces/user-invitation.interface";
+
+// Utils
+export * from "./utils/password-error-messages";

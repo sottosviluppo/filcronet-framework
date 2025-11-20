@@ -39,8 +39,8 @@ export class PasswordValidator {
    * ```
    */
   static isStrongPassword(password: string): boolean {
-    const errors = this.getPasswordErrors(password);
-    return errors.length === 0;
+    const result = this.validatePassword(password);
+    return result.isValid;
   }
 
   /**

@@ -11,10 +11,11 @@ import { AuthService } from "./auth.service";
 import { TokenType } from "../interfaces/jwt-payload.interface";
 import { IEmailService } from "../interfaces/email-service.interface";
 import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
-import { UserStatus } from "@sottosviluppo/core";
+import { PasswordValidator, UserStatus } from "@sottosviluppo/core";
 import { UserEntity } from "../entities/user.entity";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { mapPasswordErrorKeys } from "../utils/password-error-messages";
 
 /**
  * Service handling password recovery and invitation flows
@@ -130,6 +131,21 @@ export class PasswordRecoveryService {
       throw new BadRequestException("Account suspended");
     }
 
+    const validationResult = PasswordValidator.validatePassword(newPassword, {
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
+
+    if (!validationResult.isValid) {
+      const errorMessages = mapPasswordErrorKeys(validationResult.errorKeys);
+
+      throw new BadRequestException({
+        message: "Password validation failed",
+        errors: errorMessages,
+      });
+    }
     // Update password and increment version to invalidate token
     user.password = newPassword;
     user.passwordVersion = (user.passwordVersion || 0) + 1;
@@ -169,10 +185,7 @@ export class PasswordRecoveryService {
     }
 
     // Check if user already has a password
-    const userWithPassword = await this.userRepository.findOne({
-      where: { id: user.id },
-      select: ["id", "password", "passwordVersion"],
-    });
+    const userWithPassword = await this.userService.findOne(user.id);
 
     if (!userWithPassword) {
       throw new NotFoundException("User not found");
@@ -182,6 +195,22 @@ export class PasswordRecoveryService {
       throw new BadRequestException(
         "User already has a password. Use password reset instead."
       );
+    }
+
+    const validationResult = PasswordValidator.validatePassword(password, {
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
+
+    if (!validationResult.isValid) {
+      const errorMessages = mapPasswordErrorKeys(validationResult.errorKeys);
+
+      throw new BadRequestException({
+        message: "Password validation failed",
+        errors: errorMessages,
+      });
     }
 
     // Set password, increment version to invalidate token, and activate account

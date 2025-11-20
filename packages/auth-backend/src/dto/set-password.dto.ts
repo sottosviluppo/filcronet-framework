@@ -1,4 +1,10 @@
-import { IsString, MinLength, Matches, Validate, IsNotEmpty } from "class-validator";
+import {
+  IsString,
+  MinLength,
+  Matches,
+  Validate,
+  IsNotEmpty,
+} from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 import { IsStrongPasswordConstraint } from "../validators/is-strong-password.validator";
 
@@ -40,6 +46,5 @@ export class SetPasswordDto {
   @IsString()
   @IsNotEmpty()
   @MinLength(12, { message: "Password must be at least 12 characters long" })
-  @Validate(IsStrongPasswordConstraint)
   password: string;
 }
