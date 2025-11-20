@@ -60,6 +60,9 @@ export class UserEntity implements IUser {
   @Column({ nullable: true })
   lastLoginAt?: Date;
 
+  @Column({ type: 'int', default: 0 })
+  passwordVersion: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

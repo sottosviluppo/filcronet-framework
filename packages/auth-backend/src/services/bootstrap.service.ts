@@ -1,11 +1,28 @@
-import { Injectable, OnModuleInit, Inject, Logger } from "@nestjs/common";
+import {
+  Injectable,
+  OnModuleInit,
+  Inject,
+  Logger,
+  ConflictException,
+} from "@nestjs/common";
 import { PermissionService } from "./permission.service";
 import { RoleService } from "./role.service";
 import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
-import { PermissionAction } from "@sottosviluppo/core";
+import { PermissionAction, ResourceDefinition } from "@sottosviluppo/core";
 
 /**
- * Bootstrap service for initializing default roles and permissions
+ * System role configuration
+ * Defines the three built-in roles with their permissions
+ */
+interface SystemRoleConfig {
+  name: string;
+  description: string;
+  permissionPattern: "all" | "management" | "readonly";
+  locked: boolean; // If true, role cannot be modified
+}
+
+/**
+ * Bootstrap service for initializing system roles and permissions
  * Runs automatically on module initialization
  *
  * @export
@@ -16,6 +33,50 @@ import { PermissionAction } from "@sottosviluppo/core";
 export class BootstrapService implements OnModuleInit {
   private readonly logger = new Logger(BootstrapService.name);
 
+  /**
+   * Default resources that are always included in the system
+   * These are core resources required for authentication and authorization
+   */
+  private readonly DEFAULT_RESOURCES: ResourceDefinition[] = [
+    {
+      name: "users",
+      description: "User management - Create, read, update and delete users",
+    },
+    {
+      name: "roles",
+      description: "Role management - Define and assign roles with permissions",
+    },
+    {
+      name: "permissions",
+      description: "Permission management - View and manage system permissions",
+    },
+  ];
+
+  /**
+   * System roles configuration
+   * These roles are always created on bootstrap with predefined permissions
+   */
+  private readonly SYSTEM_ROLES: SystemRoleConfig[] = [
+    {
+      name: "super-admin",
+      description: "Super Administrator - Full system access (all permissions)",
+      permissionPattern: "all",
+      locked: true, // Cannot be modified
+    },
+    {
+      name: "admin",
+      description: "Administrator - User and role management access",
+      permissionPattern: "management",
+      locked: false, // Can be modified
+    },
+    {
+      name: "user",
+      description: "User - Read-only access to system resources",
+      permissionPattern: "readonly",
+      locked: false, // Can be modified
+    },
+  ];
+
   constructor(
     private readonly permissionService: PermissionService,
     private readonly roleService: RoleService,
@@ -24,128 +85,227 @@ export class BootstrapService implements OnModuleInit {
   ) {}
 
   /**
-   * Executes on module initialization
-   * Seeds permissions and roles based on configuration
+   * Lifecycle hook called after module initialization
+   * Triggers automatic bootstrap of permissions and roles
    *
    * @memberof BootstrapService
    */
   async onModuleInit() {
-    this.logger.log("Starting authentication module bootstrap...");
-
     try {
-      // Validate configuration
-      if (!this.options.resources || this.options.resources.length === 0) {
-        this.logger.warn(
-          "No resources defined in configuration. Permissions will not be created."
-        );
-        return;
-      }
+      await this.bootstrapPermissions();
+      await this.bootstrapSystemRoles();
+      await this.validateDefaultUserRole();
 
-      // 1. Seed permissions for configured resources
-      await this.seedPermissions();
-
-      // 2. Create default roles
-      await this.seedDefaultRoles();
-
-      this.logger.log("Authentication module bootstrap completed successfully");
+      this.logger.log("Authentication system bootstrap completed successfully");
     } catch (error) {
-      this.logger.error("Bootstrap failed:", error);
-      // Don't block app startup, just log the error
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error("❌ Bootstrap failed:", errorMessage);
+      throw error;
     }
   }
 
   /**
-   * Seeds permissions based on configured resources
+   * Merges default resources with user-defined resources
+   * User-defined resources with the same name will override defaults
    *
    * @private
+   * @returns {ResourceDefinition[]} Merged array of resources
    * @memberof BootstrapService
    */
-  private async seedPermissions() {
-    this.logger.log("Seeding permissions for configured resources...");
+  private getMergedResources(): ResourceDefinition[] {
+    const userResources = this.options.resources || [];
+    const resourceMap = new Map<string, ResourceDefinition>();
 
-    for (const resourceDef of this.options.resources) {
-      const actions = resourceDef.actions ?? Object.values(PermissionAction);
+    // Add default resources first
+    this.DEFAULT_RESOURCES.forEach((resource) => {
+      resourceMap.set(resource.name, resource);
+    });
 
-      this.logger.log(
-        `Creating permissions for resource: ${resourceDef.name} (${actions.length} actions)`
-      );
+    // Override with user-defined resources (if they redefine defaults)
+    userResources.forEach((resource) => {
+      resourceMap.set(resource.name, resource);
+    });
 
-      await this.permissionService.seedPermissions([resourceDef.name], actions);
-    }
-
-    const count = await this.permissionService.count();
-    this.logger.log(`Total permissions in system: ${count}`);
+    const mergedResources = Array.from(resourceMap.values());
+    return mergedResources;
   }
 
   /**
-   * Creates default roles with appropriate permissions
+   * Creates permissions for all resources
+   * For each resource, creates permissions for all actions (or specific actions if defined)
    *
    * @private
+   * @returns {Promise<void>}
    * @memberof BootstrapService
    */
-  private async seedDefaultRoles() {
-    this.logger.log("Seeding default roles...");
+  private async bootstrapPermissions(): Promise<void> {
+    const resources = this.getMergedResources();
 
-    // Get all permissions
-    const allPermissions = await this.permissionService.findAll();
-
-    // Super Admin - all permissions
-    const superAdminRole = await this.roleService.findByName("super-admin");
-    if (!superAdminRole) {
-      await this.roleService.create({
-        name: "super-admin",
-        description: "Super administrator with full system access",
-        permissionIds: allPermissions.map((p) => p.id),
-        isSystem: true,
-      });
-      this.logger.log("Created role: super-admin");
+    if (resources.length === 0) {
+      return;
     }
 
-    // Admin - all permissions except 'manage' on 'roles'
-    const adminRole = await this.roleService.findByName("admin");
-    if (!adminRole) {
-      const adminPermissions = allPermissions.filter(
-        (p) => !(p.resource === "roles" && p.action === PermissionAction.MANAGE)
-      );
+    const allActions = Object.values(PermissionAction);
+    let createdCount = 0;
+    let skippedCount = 0;
 
-      await this.roleService.create({
-        name: "admin",
-        description: "Administrator with elevated privileges",
-        permissionIds: adminPermissions.map((p) => p.id),
-        isSystem: true,
-      });
-      this.logger.log("Created role: admin");
-    }
+    for (const resource of resources) {
+      const actions = resource.actions || allActions;
 
-    // User - only 'read' permissions on 'users' resource
-    const userRole = await this.roleService.findByName("user");
-    if (!userRole) {
-      const userPermissions = allPermissions.filter(
-        (p) => p.resource === "users" && p.action === PermissionAction.READ
-      );
-
-      await this.roleService.create({
-        name: "user",
-        description: "Standard user with basic access",
-        permissionIds: userPermissions.map((p) => p.id),
-        isSystem: true,
-      });
-      this.logger.log("Created role: user");
-    }
-
-    // Create additional default roles from config
-    if (this.options.defaultRoles) {
-      for (const roleName of this.options.defaultRoles) {
-        const exists = await this.roleService.findByName(roleName);
-        if (!exists && !["super-admin", "admin", "user"].includes(roleName)) {
-          await this.roleService.create({
-            name: roleName,
-            description: `Custom role: ${roleName}`,
-            permissionIds: [],
-          });
-          this.logger.log(`Created custom role: ${roleName}`);
+      for (const action of actions) {
+        try {
+          await this.permissionService.create(
+            resource.name,
+            action as PermissionAction,
+            `${action} ${resource.name}${
+              resource.description ? ` - ${resource.description}` : ""
+            }`
+          );
+          createdCount++;
+        } catch (error) {
+          // Permission already exists, skip
+          skippedCount++;
         }
       }
+    }
+
+    this.logger.log(
+      `Permissions bootstrap completed: ${createdCount} created, ${skippedCount} already existed`
+    );
+  }
+
+  /**
+   * Creates system roles with predefined permissions
+   *
+   * System roles:
+   * - super-admin: All permissions (locked, cannot be modified)
+   * - admin: Management permissions (modifiable)
+   * - user: Read-only permissions (modifiable)
+   *
+   * @private
+   * @returns {Promise<void>}
+   * @memberof BootstrapService
+   */
+  private async bootstrapSystemRoles(): Promise<void> {
+    let createdCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+
+    for (const roleConfig of this.SYSTEM_ROLES) {
+      try {
+        const existingRole = await this.roleService.findByName(roleConfig.name);
+
+        if (existingRole) {
+          // Role exists - update permissions if not locked
+          if (roleConfig.locked) {
+            skippedCount++;
+          } else {
+            // Update permissions for non-locked roles
+            const permissions = await this.getPermissionsForRole(
+              roleConfig.permissionPattern
+            );
+
+            await this.roleService.update(existingRole.id, {
+              permissionIds: permissions.map((p) => p.id),
+            });
+
+            updatedCount++;
+          }
+          continue;
+        }
+
+        // Create new role with permissions
+        const permissions = await this.getPermissionsForRole(
+          roleConfig.permissionPattern
+        );
+
+        await this.roleService.create({
+          name: roleConfig.name,
+          description: roleConfig.description,
+          isSystem: true,
+          permissionIds: permissions.map((p) => p.id),
+        });
+
+        createdCount++;
+      } catch (error) {
+        if (error instanceof ConflictException) {
+          skippedCount++;
+        } else {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          this.logger.error(
+            `   ❌ Failed to create/update role '${roleConfig.name}':`,
+            errorMessage
+          );
+        }
+      }
+    }
+
+    this.logger.log(
+      `System roles bootstrap completed: ${createdCount} created, ${updatedCount} updated, ${skippedCount} skipped`
+    );
+  }
+
+  /**
+   * Gets permissions based on role pattern
+   *
+   * @private
+   * @param {'all' | 'management' | 'readonly'} pattern - Permission pattern
+   * @returns {Promise<PermissionEntity[]>} Array of permissions
+   * @memberof BootstrapService
+   */
+  private async getPermissionsForRole(
+    pattern: "all" | "management" | "readonly"
+  ): Promise<any[]> {
+    const allPermissions = await this.permissionService.findAll();
+
+    switch (pattern) {
+      case "all":
+        // Super-admin: ALL permissions on ALL resources
+        return allPermissions;
+
+      case "management":
+        // Admin: Full access to users, roles, permissions
+        return allPermissions.filter((p) =>
+          ["users", "roles", "permissions"].includes(p.resource)
+        );
+
+      case "readonly":
+        // User: Only read and list on system resources
+        return allPermissions.filter(
+          (p) =>
+            ["users", "roles", "permissions"].includes(p.resource) &&
+            ["read", "list"].includes(p.action)
+        );
+
+      default:
+        return [];
+    }
+  }
+
+  /**
+   * Validates that defaultUserRole exists
+   * Throws error if configured role is not found
+   *
+   * @private
+   * @returns {Promise<void>}
+   * @throws {Error} If defaultUserRole does not exist
+   * @memberof BootstrapService
+   */
+  private async validateDefaultUserRole(): Promise<void> {
+    const defaultUserRole = this.options.defaultUserRole || "user";
+
+    const roleExists = await this.roleService.findByName(defaultUserRole);
+
+    if (!roleExists) {
+      const availableRoles = this.SYSTEM_ROLES.map((r) => r.name).join(", ");
+
+      throw new Error(
+        `Configuration error: defaultUserRole '${defaultUserRole}' does not exist.\n` +
+          `Available system roles: ${availableRoles}\n` +
+          `If using a custom role, create it via POST /v1/roles before starting the application.`
+      );
     }
   }
 }

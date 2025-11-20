@@ -41,16 +41,7 @@ import { EmailModule } from './email.module';
       invitation: {
         expiresIn: '7d', // New user set password token expiration
       },
-      defaultRoles: ['user'], // Default roles for new user
       resources: [
-        {
-          name: 'users',
-          description: 'User management',
-        },
-        {
-          name: 'roles',
-          description: 'Role management',
-        },
         {
           name: 'products',
           description: 'Product catalog',

@@ -56,6 +56,15 @@ export interface JwtPayload {
   type: TokenType;
 
   /**
+   * Password version for token invalidation
+   * Used to invalidate PASSWORD_RESET and INVITATION tokens after use
+   * When password changes or is set, this version increments
+   *
+   * @type {number}
+   */
+  version?: number;
+
+  /**
    * Issued At - Token creation timestamp
    * Standard JWT claim (automatically added by jwt library)
    *

@@ -12,6 +12,9 @@ import { TokenType } from "../interfaces/jwt-payload.interface";
 import { IEmailService } from "../interfaces/email-service.interface";
 import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
 import { UserStatus } from "@sottosviluppo/core";
+import { UserEntity } from "../entities/user.entity";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository } from "typeorm";
 
 /**
  * Service handling password recovery and invitation flows
@@ -22,6 +25,8 @@ import { UserStatus } from "@sottosviluppo/core";
 @Injectable()
 export class PasswordRecoveryService {
   constructor(
+    @InjectRepository(UserEntity)
+    private readonly userRepository: Repository<UserEntity>,
     @Inject(forwardRef(() => UserService))
     private readonly userService: UserService,
     @Inject(forwardRef(() => AuthService))
@@ -66,13 +71,14 @@ export class PasswordRecoveryService {
         return { message: successMessage };
       }
 
-      // Generate reset token
+      // Generate reset token WITH current password version
       const expiresIn = this.options.passwordReset?.expiresIn ?? "15m";
       const token = this.authService.generateSpecialToken(
         user.id,
         user.email,
         TokenType.PASSWORD_RESET,
-        expiresIn
+        expiresIn,
+        user.passwordVersion
       );
 
       // Send email if service is configured
@@ -95,6 +101,7 @@ export class PasswordRecoveryService {
 
   /**
    * Resets user password using reset token
+   * Invalidates token by incrementing password version
    *
    * @param {string} token - Password reset token
    * @param {string} newPassword - New password
@@ -106,7 +113,7 @@ export class PasswordRecoveryService {
     token: string,
     newPassword: string
   ): Promise<{ message: string }> {
-    // Verify token
+    // Verify token (includes version check)
     const payload = await this.authService.verifySpecialToken(
       token,
       TokenType.PASSWORD_RESET
@@ -123,19 +130,20 @@ export class PasswordRecoveryService {
       throw new BadRequestException("Account suspended");
     }
 
-    // Update password (will be hashed automatically by entity)
+    // Update password and increment version to invalidate token
     user.password = newPassword;
-    await this.userService.update(user.id, { status: UserStatus.ACTIVE });
+    user.passwordVersion = (user.passwordVersion || 0) + 1;
+    user.status = UserStatus.ACTIVE;
 
     // Save with new password
-    const userRepo = (this.userService as any).userRepository;
-    await userRepo.save(user);
+    await this.userRepository.save(user);
 
     return { message: "Password reset successfully" };
   }
 
   /**
    * Sets password for user (first time, from invitation)
+   * Invalidates token by incrementing password version
    *
    * @param {string} token - Invitation token
    * @param {string} password - Password to set
@@ -147,7 +155,7 @@ export class PasswordRecoveryService {
     token: string,
     password: string
   ): Promise<{ message: string }> {
-    // Verify token
+    // Verify token (includes version check)
     const payload = await this.authService.verifySpecialToken(
       token,
       TokenType.INVITATION
@@ -161,12 +169,14 @@ export class PasswordRecoveryService {
     }
 
     // Check if user already has a password
-    const userWithPassword = await (
-      this.userService as any
-    ).userRepository.findOne({
+    const userWithPassword = await this.userRepository.findOne({
       where: { id: user.id },
-      select: ["id", "password"],
+      select: ["id", "password", "passwordVersion"],
     });
+
+    if (!userWithPassword) {
+      throw new NotFoundException("User not found");
+    }
 
     if (userWithPassword.password) {
       throw new BadRequestException(
@@ -174,13 +184,14 @@ export class PasswordRecoveryService {
       );
     }
 
-    // Set password and activate account
+    // Set password, increment version to invalidate token, and activate account
     userWithPassword.password = password;
+    userWithPassword.passwordVersion =
+      (userWithPassword.passwordVersion || 0) + 1;
     userWithPassword.status = UserStatus.ACTIVE;
     userWithPassword.emailVerified = true;
 
-    const userRepo = (this.userService as any).userRepository;
-    await userRepo.save(userWithPassword);
+    await this.userRepository.save(userWithPassword);
 
     return { message: "Password set successfully" };
   }
@@ -207,24 +218,27 @@ export class PasswordRecoveryService {
     }
 
     // Check if user already has password
-    const userWithPassword = await (
-      this.userService as any
-    ).userRepository.findOne({
+    const userWithPassword = await this.userRepository.findOne({
       where: { id: user.id },
-      select: ["id", "password"],
+      select: ["id", "password", "passwordVersion"],
     });
+
+    if (!userWithPassword) {
+      throw new NotFoundException("User not found");
+    }
 
     if (userWithPassword.password) {
       throw new BadRequestException("User already has a password");
     }
 
-    // Generate invitation token
+    // Generate invitation token WITH current password version
     const expiresIn = this.options.invitation?.expiresIn ?? "7d";
     const token = this.authService.generateSpecialToken(
       user.id,
       user.email,
       TokenType.INVITATION,
-      expiresIn
+      expiresIn,
+      userWithPassword.passwordVersion || 0
     );
 
     const invitationUrl = `${invitationUrlBase}?token=${token}`;

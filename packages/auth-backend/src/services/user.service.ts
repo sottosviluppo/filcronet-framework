@@ -19,6 +19,7 @@ import {
 } from "@sottosviluppo/core";
 import { PasswordRecoveryService } from "./password-recovery.service";
 import { UserCreatedWithInvitation } from "../interfaces/user-invitation.interface";
+import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
 
 /**
  * Internal type for user creation with additional fields
@@ -43,7 +44,9 @@ export class UserService {
     @InjectRepository(RoleEntity)
     private roleRepository: Repository<RoleEntity>,
     @Inject(forwardRef(() => PasswordRecoveryService))
-    private readonly passwordRecoveryService: PasswordRecoveryService
+    private readonly passwordRecoveryService: PasswordRecoveryService,
+    @Inject("AUTH_OPTIONS")
+    private options: AuthModuleOptions
   ) {}
 
   /**
@@ -86,13 +89,22 @@ export class UserService {
         id: In(createUserDto.roleIds),
       });
     } else {
-      // Assign default "user" role
+      // Assign default user role from configuration
+      const defaultRoleName = this.options.defaultUserRole || "user";
+
       const defaultRole = await this.roleRepository.findOne({
-        where: { name: "user" },
+        where: { name: defaultRoleName },
       });
-      if (defaultRole) {
-        roles = [defaultRole];
+
+      if (!defaultRole) {
+        // This should NEVER happen if bootstrap completed successfully
+        throw new BadRequestException(
+          `Critical error: default user role '${defaultRoleName}' not found. ` +
+            `This indicates a system configuration error. Please contact system administrator.`
+        );
       }
+
+      roles = [defaultRole];
     }
 
     // Determine status based on whether password is provided
@@ -234,6 +246,7 @@ export class UserService {
         "firstName",
         "lastName",
         "password",
+        "passwordVersion",
         "status",
         "emailVerified",
         "lastLoginAt",

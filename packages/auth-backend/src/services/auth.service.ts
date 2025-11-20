@@ -55,27 +55,21 @@ export class AuthService {
    * @memberof AuthService
    */
   async register(registerDto: RegisterDto): Promise<AuthResponseWithTokens> {
+    // Get default user role from configuration
+    const defaultRoleName = this.options.defaultUserRole || "user";
     // Try to find default role
-    let defaultRole = await this.roleService.findByName("user");
+    let defaultRole = await this.roleService.findByName(defaultRoleName);
 
-    // If no default role exists, try to create it (bootstrap may have failed)
     if (!defaultRole) {
-      this.logger.warn(
-        'Default "user" role not found, attempting to create it'
+      // This should NEVER happen if bootstrap completed successfully
+      this.logger.error(
+        `Critical error: default user role '${defaultRoleName}' not found after bootstrap validation`
       );
 
-      try {
-        defaultRole = await this.roleService.create({
-          name: "user",
-          description: "Standard user with basic access",
-          permissionIds: [],
-          isSystem: true,
-        });
-      } catch (error) {
-        throw new BadRequestException(
-          "Unable to register user: default role configuration is invalid. Please contact system administrator."
-        );
-      }
+      throw new BadRequestException(
+        `Unable to register user: default user role '${defaultRoleName}' not found. ` +
+          `This indicates a critical system error. Please contact system administrator.`
+      );
     }
 
     const user = await this.userService.create({
@@ -249,6 +243,7 @@ export class AuthService {
    * @param {string} email - User email
    * @param {TokenType} type - Token type
    * @param {(string | number)} expiresIn - Token expiration
+   * @param {(number)} version - Token version for invalidation
    * @returns {string} Signed JWT token
    * @memberof AuthService
    */
@@ -256,12 +251,14 @@ export class AuthService {
     userId: string,
     email: string,
     type: TokenType,
-    expiresIn: StringValue | number
+    expiresIn: StringValue | number,
+    version: number
   ): string {
     const payload: JwtPayload = {
       sub: userId,
       email,
       type,
+      version,
     };
 
     return this.jwtService.sign(payload, { expiresIn });
@@ -280,16 +277,20 @@ export class AuthService {
     token: string,
     expectedType: TokenType
   ): Promise<JwtPayload> {
-    try {
-      const payload = this.jwtService.verify<JwtPayload>(token);
+    const payload = this.jwtService.verify<JwtPayload>(token);
 
-      if (payload.type !== expectedType) {
-        throw new UnauthorizedException("Invalid token type");
-      }
-
-      return payload;
-    } catch (error) {
-      throw new UnauthorizedException("Invalid or expired token");
+    if (payload.type !== expectedType) {
+      throw new UnauthorizedException("Invalid token type");
     }
+
+    // Verifica versione per token speciali
+    if (payload.version !== undefined) {
+      const user = await this.userService.findOne(payload.sub);
+      if (!user || user.passwordVersion !== payload.version) {
+        throw new UnauthorizedException("Token has been invalidated");
+      }
+    }
+
+    return payload;
   }
 }

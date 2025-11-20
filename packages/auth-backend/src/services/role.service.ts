@@ -125,8 +125,10 @@ export class RoleService {
   async update(id: string, updateRoleDto: IUpdateRoleDto): Promise<RoleEntity> {
     const role = await this.findOne(id);
 
-    if (role.isSystem) {
-      throw new ConflictException("Cannot modify system role");
+    if (role.name === "super-admin") {
+      throw new ConflictException(
+        "Cannot modify 'super-admin' role: this role is locked for security reasons"
+      );
     }
 
     if (updateRoleDto.name && updateRoleDto.name !== role.name) {
@@ -141,7 +143,7 @@ export class RoleService {
       }
     }
 
-    if (updateRoleDto.permissionIds) {
+    if (updateRoleDto.permissionIds !== undefined) {
       const permissions = await this.permissionRepository.findBy({
         id: In(updateRoleDto.permissionIds),
       });
