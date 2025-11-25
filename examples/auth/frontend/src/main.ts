@@ -8,6 +8,7 @@ import PrimeVue from "primevue/config";
 import Aura from "@primeuix/themes/aura";
 
 import "./tailwind.css";
+import "primeicons/primeicons.css";
 import { createI18n } from "vue-i18n";
 import it from "./locales/it";
 

@@ -48,8 +48,8 @@ const onSubmit = handleSubmit(async (values) => {
                 </IconField>
                 <div class="font-bold text-red-600">{{ errors.email }}</div>
             </div>
-            <Button :disabled="isLoading" type="submit" severity="secondary"
-                :label="isLoading ? 'Loading...' : 'Login'" />
+            <Button class="mt-8" :disabled="isLoading" type="submit" severity="secondary"
+                :label="isLoading ? 'Loading...' : 'Recupera Password'" fluid />
             <div class="mt-4 text-center">
                 <router-link to="/login" class="text-blue-600 hover:underline">
                     {{ $t('forgotPassword.backToLogin') }}

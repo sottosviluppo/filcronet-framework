@@ -23,16 +23,26 @@ onMounted(async () => {
     isValidToken.value = result.valid;
 });
 
-const resetPasswordSchema = useResetPasswordValidation({
-    token: {
-        required: t('validation.token.required'),
+const resetPasswordSchema = useResetPasswordValidation(
+    {
+        token: {
+            required: t('validation.token.required'),
+        },
+        password: {
+            minLength: t('validation.password.minLength'),
+            notStrong: t('validation.password.notStrong'),
+            mismatch: t('validation.password.mismatch'),
+        },
     },
-    password: {
-        minLength: t('validation.password.minLength'),
-        notStrong: t('validation.password.notStrong'),
-        mismatch: t('validation.password.mismatch'),
-    },
-});
+    {
+        tooShort: t('validation.password.tooShort'),
+        noUppercase: t('validation.password.noUppercase'),
+        noLowercase: t('validation.password.noLowercase'),
+        noNumber: t('validation.password.noNumber'),
+        noSpecialChar: t('validation.password.noSpecialChar'),
+        containsPersonalData: t('validation.password.containsPersonalData'),
+    }
+);
 
 
 const { errors, handleSubmit, defineField } = useForm({
@@ -78,8 +88,35 @@ const onSubmit = handleSubmit(async (values) => {
             <div v-if="error" class="mb-4 p-3 bg-red-100 text-red-700 rounded">
                 {{ error }}
             </div>
-            <Button :disabled="isLoading" type="submit" severity="secondary"
-                :label="isLoading ? 'Loading...' : 'Login'" />
+            <div>
+                <label for="newPassword" class="block mb-3 font-bold">{{
+                    $t("login.newPassword")
+                }}</label>
+                <IconField>
+                    <InputIcon class="pi pi-key" />
+                    <Password id="newPassword" type="password" :placeholder="$t('login.password')" v-model="newPassword"
+                        v-bind="newPasswordAttrs" toggle-mask :feedback="true" autocomplete="off" fluid />
+                </IconField>
+                <div v-if="errors.newPassword" class="font-bold text-red-600">
+                    {{ errors.newPassword }}
+                </div>
+            </div>
+            <div class="mt-4">
+                <label for="confirmPassword" class="block mb-3 font-bold">{{
+                    $t("login.confirmPassword")
+                }}</label>
+                <IconField>
+                    <InputIcon class="pi pi-key" />
+                    <Password id="confirmPassword" type="password" :placeholder="$t('login.confirmPassword')"
+                        v-model="confirmPassword" v-bind="confirmPasswordAttrs" toggle-mask :feedback="false"
+                        autocomplete="off" fluid />
+                </IconField>
+                <div v-if="errors.confirmPassword" class="font-bold text-red-600">
+                    {{ errors.confirmPassword }}
+                </div>
+            </div>
+            <Button class="mt-8" :disabled="isLoading" type="submit" severity="secondary"
+                :label="isLoading ? 'Loading...' : 'Login'" fluid />
         </form>
     </div>
 </template>

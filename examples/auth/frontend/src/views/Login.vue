@@ -53,21 +53,21 @@ const onSubmit = handleSubmit(async (values) => {
                 </IconField>
                 <div class="font-bold text-red-600">{{ errors.email }}</div>
             </div>
-            <div>
-                <label for="description" class="block mb-3 font-bold">{{
+            <div class="mt-4">
+                <label for="password" class="block mb-3 font-bold">{{
                     $t("login.password")
                     }}</label>
                 <IconField>
                     <InputIcon class="pi pi-key" />
                     <Password id="password" type="password" :placeholder="$t('login.password')" v-model="password"
-                        v-bind="passwordAttrs" toggle-mask :feedback="true" autocomplete="off" fluid />
+                        v-bind="passwordAttrs" toggle-mask :feedback="false" autocomplete="off" fluid />
                 </IconField>
                 <div v-if="errors.password" class="font-bold text-red-600">
                     {{ errors.password }}
                 </div>
             </div>
-            <Button :disabled="isLoading" type="submit" severity="secondary"
-                :label="isLoading ? 'Loading...' : 'Login'" />
+            <Button class="mt-8" :disabled="isLoading" type="submit" severity="secondary"
+                :label="isLoading ? 'Loading...' : 'Login'" fluid />
             <div class="mt-4 text-center">
                 <router-link to="/forgot-password" class="text-blue-600 hover:underline">
                     {{ $t('login.forgotPassword') }}
