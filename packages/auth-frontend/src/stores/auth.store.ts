@@ -1,197 +1,57 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
-import type { IUser } from "@sottosviluppo/core";
-import type { LoginCredentials, RegisterData, AuthConfig } from "../types";
-import { AuthApi } from "../api";
-import { TokenStorage } from "../utils";
+import type { AuthConfig } from "../types";
+import {
+  AuthApi,
+  AuthHttpClient,
+  type LoginCredentials,
+  type RegisterData,
+} from "../api";
+import { IUser } from "@sottosviluppo/core";
+import { AxiosHttpClient } from "@sottosviluppo/frontend-core";
+import { ITokenStorage } from "../interfaces/token-storage.interface";
+import { TokenRefreshScheduler } from "../utils";
+import { MemoryTokenStorage } from "../storage/memory-token-storage";
+import { IAuthHttpClient } from "../interfaces";
 
 /**
  * Authentication store
- * Manages authentication state using Pinia
+ * Manages authentication state, token refresh, and user data
  *
  * @export
  * @function useAuthStore
+ *
+ * @example
+ * ```typescript
+ * const authStore = useAuthStore();
+ *
+ * // Initialize in main.ts or plugin
+ * authStore.initialize(config);
+ *
+ * // Use in components
+ * await authStore.login({ email, password });
+ * await authStore.logout();
+ * ```
  */
-export const useAuthStore = defineStore("auth", () => {
-  // State
+export const useAuthStore = defineStore("filcronet-auth", () => {
+  // ===== STATE =====
   const user = ref<IUser | null>(null);
   const isAuthenticated = ref<boolean>(false);
   const isLoading = ref<boolean>(false);
   const error = ref<string | null>(null);
 
-  // Private variables
+  // ===== PRIVATE INSTANCES =====
+  let httpClient: IAuthHttpClient;
+  let storage: ITokenStorage;
   let authApi: AuthApi;
-  let tokenStorage: TokenStorage;
+  let tokenScheduler: TokenRefreshScheduler | null = null;
+  let config: AuthConfig;
+
+  // ===== COMPUTED =====
 
   /**
-   * Initializes the auth store with configuration
-   * Must be called before using the store
-   *
-   * @param {AuthConfig} config - Authentication configuration
+   * User's display name (firstName lastName or username or email)
    */
-  function initialize(config: AuthConfig): void {
-    authApi = new AuthApi(config);
-    tokenStorage = new TokenStorage(config.storage);
-
-    // Check if user is already logged in
-    const savedUser = tokenStorage.getUser();
-    const savedToken = tokenStorage.getToken();
-
-    if (savedUser && savedToken) {
-      user.value = savedUser;
-      isAuthenticated.value = true;
-    }
-  }
-
-  /**
-   * Logs in user with credentials
-   *
-   * @param {LoginCredentials} credentials - User login credentials
-   * @returns {Promise<IUser>} Authenticated user
-   * @throws {Error} If login fails
-   */
-  async function login(credentials: LoginCredentials): Promise<IUser> {
-    isLoading.value = true;
-    error.value = null;
-
-    try {
-      const response = await authApi.login(credentials);
-
-      user.value = response.user;
-      isAuthenticated.value = true;
-
-      return response.user;
-    } catch (err: any) {
-      error.value = err.response?.data?.message || "Login failed";
-      throw err;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /**
-   * Registers a new user
-   *
-   * @param {RegisterData} data - User registration data
-   * @returns {Promise<IUser>} Registered user
-   * @throws {Error} If registration fails
-   */
-  async function register(data: RegisterData): Promise<IUser> {
-    isLoading.value = true;
-    error.value = null;
-
-    try {
-      const response = await authApi.register(data);
-
-      user.value = response.user;
-      isAuthenticated.value = true;
-
-      return response.user;
-    } catch (err: any) {
-      error.value = err.response?.data?.message || "Registration failed";
-      throw err;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /**
-   * Logs out current user
-   * Clears authentication state and tokens
-   *
-   * @returns {Promise<void>}
-   */
-  async function logout(): Promise<void> {
-    isLoading.value = true;
-    error.value = null;
-
-    try {
-      await authApi.logout();
-
-      user.value = null;
-      isAuthenticated.value = false;
-    } catch (err: any) {
-      error.value = err.response?.data?.message || "Logout failed";
-      throw err;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /**
-   * Fetches current user profile from server
-   * Updates local user state with fresh data
-   *
-   * @returns {Promise<IUser>} Current user
-   * @throws {Error} If fetch fails
-   */
-  async function fetchCurrentUser(): Promise<IUser> {
-    isLoading.value = true;
-    error.value = null;
-
-    try {
-      const fetchedUser = await authApi.getCurrentUser();
-
-      user.value = fetchedUser;
-      isAuthenticated.value = true;
-
-      return fetchedUser;
-    } catch (err: any) {
-      error.value = err.response?.data?.message || "Failed to fetch user";
-
-      // Clear auth state if token is invalid
-      if (err.response?.status === 401) {
-        user.value = null;
-        isAuthenticated.value = false;
-      }
-
-      throw err;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /**
-   * Refreshes authentication token
-   *
-   * @returns {Promise<void>}
-   */
-  async function refreshToken(): Promise<void> {
-    isLoading.value = true;
-    error.value = null;
-
-    try {
-      await authApi.refreshToken();
-    } catch (err: any) {
-      error.value = err.response?.data?.message || "Token refresh failed";
-
-      // Clear auth state if refresh fails
-      user.value = null;
-      isAuthenticated.value = false;
-
-      throw err;
-    } finally {
-      isLoading.value = false;
-    }
-  }
-
-  /**
-   * Clears error state
-   */
-  function clearError(): void {
-    error.value = null;
-  }
-
-  /**
-   * Gets the API client instance for custom requests
-   *
-   * @returns {import('axios').AxiosInstance}
-   */
-  function getApiClient() {
-    return authApi.getClient();
-  }
-
-  // Computed properties
   const userName = computed(() => {
     if (!user.value) return null;
 
@@ -204,6 +64,9 @@ export const useAuthStore = defineStore("auth", () => {
     return username || email;
   });
 
+  /**
+   * User's initials for avatar
+   */
   const userInitials = computed(() => {
     if (!user.value) return null;
 
@@ -220,6 +83,307 @@ export const useAuthStore = defineStore("auth", () => {
     return email.substring(0, 2).toUpperCase();
   });
 
+  /**
+   * User's permissions (flattened from roles)
+   */
+  const userPermissions = computed(() => {
+    if (!user.value || !user.value.roles) return [];
+
+    return user.value.roles
+      .flatMap((role) => role.permissions || [])
+      .map((permission) => `${permission.resource}:${permission.action}`);
+  });
+
+  /**
+   * User's role names
+   */
+  const userRoles = computed(() => {
+    if (!user.value || !user.value.roles) return [];
+    return user.value.roles.map((role) => role.name);
+  });
+
+  // ===== ACTIONS =====
+
+  /**
+   * Initialize auth store with configuration
+   * MUST be called before using the store (typically in plugin or main.ts)
+   *
+   * @param {AuthConfig} authConfig - Authentication configuration
+   * @memberof useAuthStore
+   */
+  function initialize(authConfig: AuthConfig): void {
+    config = authConfig;
+
+    // Create HTTP client
+    const baseURL = `${config.apiBaseUrl}/${config.apiVersion}`;
+    httpClient = config.httpClient || new AuthHttpClient(baseURL);
+
+    // Create storage
+    storage = config.storage || new MemoryTokenStorage();
+
+    // Create Auth API
+    authApi = new AuthApi(httpClient, storage);
+
+    // Setup auto-refresh on 401
+    httpClient.setupAutoRefresh(async () => {
+      const response = await authApi.refreshToken();
+
+      // Update user data after refresh
+      user.value = response.user;
+
+      // Schedule next refresh
+      if (config.autoRefreshToken !== false && tokenScheduler) {
+        tokenScheduler.schedule(response.accessToken);
+      }
+
+      return response.accessToken;
+    });
+
+    // Setup unauthorized callback (when refresh fails)
+    httpClient.onUnauthorized(() => {
+      clearAuthState();
+
+      if (config.redirectOnUnauth && typeof window !== "undefined") {
+        window.location.href = config.redirectOnUnauth;
+      }
+    });
+
+    // Restore session if token exists
+    const savedToken = storage.getToken();
+    const savedUser = storage.getUser<IUser>();
+
+    if (savedToken && savedUser) {
+      user.value = savedUser;
+      isAuthenticated.value = true;
+      httpClient.setAuthToken(savedToken);
+
+      // Setup token refresh scheduler if enabled
+      if (config.autoRefreshToken !== false) {
+        setupTokenRefresh(savedToken);
+      }
+    }
+  }
+
+  /**
+   * Register a new user
+   *
+   * @param {RegisterData} data - Registration data
+   * @returns {Promise<IUser>} Registered user
+   * @memberof useAuthStore
+   */
+  async function register(data: RegisterData): Promise<IUser> {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await authApi.register(data);
+
+      user.value = response.user;
+      isAuthenticated.value = true;
+
+      // Setup token refresh scheduler if enabled
+      if (config.autoRefreshToken !== false) {
+        setupTokenRefresh(response.accessToken);
+      }
+
+      return response.user;
+    } catch (err: any) {
+      error.value = err.message || "Registration failed";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * Login with credentials
+   *
+   * @param {LoginCredentials} credentials - Login credentials
+   * @returns {Promise<IUser>} Authenticated user
+   * @memberof useAuthStore
+   */
+  async function login(credentials: LoginCredentials): Promise<IUser> {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await authApi.login(credentials);
+
+      user.value = response.user;
+      isAuthenticated.value = true;
+
+      // Setup token refresh scheduler if enabled
+      if (config.autoRefreshToken !== false) {
+        setupTokenRefresh(response.accessToken);
+      }
+
+      return response.user;
+    } catch (err: any) {
+      error.value = err.message || "Login failed";
+      clearAuthState();
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * Logout current user
+   * Clears tokens (including HttpOnly cookie) and local state
+   *
+   * @returns {Promise<void>}
+   * @memberof useAuthStore
+   */
+  async function logout(): Promise<void> {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      await authApi.logout();
+      clearAuthState();
+    } catch (err: any) {
+      error.value = err.message || "Logout failed";
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * Fetch current user profile from server
+   * Updates local user state with fresh data
+   *
+   * @returns {Promise<IUser>}
+   * @memberof useAuthStore
+   */
+  async function fetchCurrentUser(): Promise<IUser> {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const fetchedUser = await authApi.getCurrentUser();
+
+      user.value = fetchedUser;
+      isAuthenticated.value = true;
+
+      return fetchedUser;
+    } catch (err: any) {
+      error.value = err.message || "Failed to fetch user";
+
+      // Clear auth state if token is invalid
+      if (err.response?.status === 401) {
+        clearAuthState();
+      }
+
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * Manually refresh access token
+   * (Usually not needed, auto-refresh handles this)
+   *
+   * @returns {Promise<void>}
+   * @memberof useAuthStore
+   */
+  async function refreshToken(): Promise<void> {
+    isLoading.value = true;
+    error.value = null;
+
+    try {
+      const response = await authApi.refreshToken();
+
+      user.value = response.user;
+
+      // Schedule next refresh
+      if (config.autoRefreshToken !== false && tokenScheduler) {
+        tokenScheduler.schedule(response.accessToken);
+      }
+    } catch (err: any) {
+      error.value = err.message || "Token refresh failed";
+      clearAuthState();
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  /**
+   * Clear error state
+   *
+   * @memberof useAuthStore
+   */
+  function clearError(): void {
+    error.value = null;
+  }
+
+  /**
+   * Get HTTP client instance for custom API calls
+   *
+   * @returns {IAuthHttpClient}
+   * @memberof useAuthStore
+   */
+  function getHttpClient(): IAuthHttpClient {
+    return httpClient;
+  }
+
+  /**
+   * Get Auth API instance for direct access
+   *
+   * @returns {AuthApi}
+   * @memberof useAuthStore
+   */
+  function getAuthApi(): AuthApi {
+    return authApi;
+  }
+
+  // ===== PRIVATE HELPERS =====
+
+  /**
+   * Setup token refresh scheduler
+   *
+   * @private
+   * @param {string} accessToken - JWT access token
+   */
+  function setupTokenRefresh(accessToken: string): void {
+    if (tokenScheduler) {
+      tokenScheduler.cancel();
+    }
+
+    const refreshBeforeExpiry = config.refreshBeforeExpiry || 60000; // 1 minute default
+
+    tokenScheduler = new TokenRefreshScheduler(async () => {
+      try {
+        const response = await authApi.refreshToken();
+        user.value = response.user;
+        return response.accessToken;
+      } catch (error) {
+        throw error;
+      }
+    }, refreshBeforeExpiry);
+
+    tokenScheduler.schedule(accessToken);
+  }
+
+  /**
+   * Clear authentication state
+   *
+   * @private
+   */
+  function clearAuthState(): void {
+    user.value = null;
+    isAuthenticated.value = false;
+    storage.clear();
+    httpClient.setAuthToken(null);
+
+    if (tokenScheduler) {
+      tokenScheduler.cancel();
+      tokenScheduler = null;
+    }
+  }
+
   return {
     // State
     user,
@@ -230,15 +394,18 @@ export const useAuthStore = defineStore("auth", () => {
     // Computed
     userName,
     userInitials,
+    userPermissions,
+    userRoles,
 
     // Actions
     initialize,
-    login,
     register,
+    login,
     logout,
     fetchCurrentUser,
     refreshToken,
     clearError,
-    getApiClient,
+    getHttpClient,
+    getAuthApi,
   };
 });

@@ -1,7 +1,2 @@
-/**
- * Utilities module
- *
- * @packageDocumentation
- */
-
-export * from "./token-storage";
+export * from "./jwt-decoder";
+export * from "./token-refresh-scheduler";

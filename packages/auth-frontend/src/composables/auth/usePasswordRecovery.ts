@@ -1,6 +1,5 @@
 import { ref } from "vue";
-import { useAuthStore } from "../stores";
-import type { AxiosError } from "axios";
+import { useAuthStore } from "../../stores";
 
 /**
  * Password recovery composable
@@ -24,39 +23,33 @@ import type { AxiosError } from "axios";
  */
 export function usePasswordRecovery() {
   const authStore = useAuthStore();
+  const authApi = authStore.getAuthApi();
 
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const successMessage = ref<string | null>(null);
 
   /**
-   * Requests password reset
+   * Request password reset
    *
    * @param {string} email - User email
-   * @param {string} resetUrlBase - Base URL for reset page
+   * @param {string} resetUrl - Base URL for reset page
    * @returns {Promise<void>}
    */
   async function forgotPassword(
     email: string,
-    resetUrlBase: string
+    resetUrl: string
   ): Promise<void> {
     isLoading.value = true;
     error.value = null;
     successMessage.value = null;
 
     try {
-      const apiClient = authStore.getApiClient();
-      const response = await apiClient.post(
-        "/auth/forgot-password",
-        { email },
-        { params: { resetUrl: resetUrlBase } }
-      );
-
-      successMessage.value = response.data.message;
-    } catch (err) {
-      const axiosError = err as AxiosError<{ message: string }>;
-      error.value =
-        axiosError.response?.data?.message || "Failed to send reset email";
+      await authApi.forgotPassword(email, resetUrl);
+      successMessage.value =
+        "If an account with that email exists, a password reset link has been sent";
+    } catch (err: any) {
+      error.value = err.message || "Failed to send reset email";
       throw err;
     } finally {
       isLoading.value = false;
@@ -64,7 +57,7 @@ export function usePasswordRecovery() {
   }
 
   /**
-   * Resets password with token
+   * Reset password with token
    *
    * @param {string} token - Reset token from email
    * @param {string} newPassword - New password
@@ -79,17 +72,10 @@ export function usePasswordRecovery() {
     successMessage.value = null;
 
     try {
-      const apiClient = authStore.getApiClient();
-      const response = await apiClient.post("/auth/reset-password", {
-        token,
-        newPassword,
-      });
-
-      successMessage.value = response.data.message;
-    } catch (err) {
-      const axiosError = err as AxiosError<{ message: string }>;
-      error.value =
-        axiosError.response?.data?.message || "Failed to reset password";
+      await authApi.resetPassword(token, newPassword);
+      successMessage.value = "Password reset successfully";
+    } catch (err: any) {
+      error.value = err.message || "Failed to reset password";
       throw err;
     } finally {
       isLoading.value = false;
@@ -97,7 +83,7 @@ export function usePasswordRecovery() {
   }
 
   /**
-   * Sets password from invitation
+   * Set password from invitation
    *
    * @param {string} token - Invitation token
    * @param {string} password - Password to set
@@ -109,17 +95,10 @@ export function usePasswordRecovery() {
     successMessage.value = null;
 
     try {
-      const apiClient = authStore.getApiClient();
-      const response = await apiClient.post("/auth/set-password", {
-        token,
-        password,
-      });
-
-      successMessage.value = response.data.message;
-    } catch (err) {
-      const axiosError = err as AxiosError<{ message: string }>;
-      error.value =
-        axiosError.response?.data?.message || "Failed to set password";
+      await authApi.setPassword(token, password);
+      successMessage.value = "Password set successfully";
+    } catch (err: any) {
+      error.value = err.message || "Failed to set password";
       throw err;
     } finally {
       isLoading.value = false;
@@ -127,10 +106,10 @@ export function usePasswordRecovery() {
   }
 
   /**
-   * Validates a token
+   * Validate a token
    *
    * @param {string} token - Token to validate
-   * @param {string} type - Token type (password_reset or invitation)
+   * @param {'password_reset' | 'invitation'} type - Token type
    * @returns {Promise<{ valid: boolean; email?: string }>}
    */
   async function validateToken(
@@ -141,13 +120,8 @@ export function usePasswordRecovery() {
     error.value = null;
 
     try {
-      const apiClient = authStore.getApiClient();
-      const response = await apiClient.get("/auth/validate-token", {
-        params: { token, type },
-      });
-
-      return response.data;
-    } catch (err) {
+      return await authApi.validateToken(token, type);
+    } catch (err: any) {
       return { valid: false };
     } finally {
       isLoading.value = false;
@@ -155,7 +129,7 @@ export function usePasswordRecovery() {
   }
 
   /**
-   * Clears error and success messages
+   * Clear error and success messages
    */
   function clearMessages(): void {
     error.value = null;

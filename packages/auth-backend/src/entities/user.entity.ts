@@ -8,6 +8,7 @@ import {
   JoinTable,
   BeforeInsert,
   BeforeUpdate,
+  Index,
 } from "typeorm";
 import { IUser, UserStatus } from "@sottosviluppo/core";
 import { RoleEntity } from "./role.entity";
@@ -20,6 +21,8 @@ import * as bcrypt from "bcrypt";
  * @implements {IUser}
  */
 @Entity("users")
+@Index(["email"])
+@Index(["username"])
 export class UserEntity implements IUser {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -60,7 +63,7 @@ export class UserEntity implements IUser {
   @Column({ nullable: true })
   lastLoginAt?: Date;
 
-  @Column({ type: 'int', default: 0 })
+  @Column({ type: "int", default: 0 })
   passwordVersion: number;
 
   @CreateDateColumn()

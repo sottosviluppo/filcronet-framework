@@ -1,6 +1,6 @@
 import { storeToRefs } from "pinia";
-import { useAuthStore } from "../stores";
-import type { LoginCredentials, RegisterData } from "../types";
+import { useAuthStore } from "../../stores";
+import type { LoginCredentials, RegisterData } from "../../api";
 
 /**
  * Authentication composable
@@ -26,23 +26,21 @@ export function useAuth() {
   const authStore = useAuthStore();
 
   // Extract reactive state
-  const { user, isAuthenticated, isLoading, error, userName, userInitials } =
-    storeToRefs(authStore);
+  const {
+    user,
+    isAuthenticated,
+    isLoading,
+    error,
+    userName,
+    userInitials,
+    userPermissions,
+    userRoles,
+  } = storeToRefs(authStore);
 
   /**
-   * Logs in user with credentials
+   * Register a new user
    *
-   * @param {LoginCredentials} credentials - User login credentials
-   * @returns {Promise<void>}
-   */
-  async function login(credentials: LoginCredentials): Promise<void> {
-    await authStore.login(credentials);
-  }
-
-  /**
-   * Registers a new user
-   *
-   * @param {RegisterData} data - User registration data
+   * @param {RegisterData} data - Registration data
    * @returns {Promise<void>}
    */
   async function register(data: RegisterData): Promise<void> {
@@ -50,7 +48,17 @@ export function useAuth() {
   }
 
   /**
-   * Logs out current user
+   * Login with credentials
+   *
+   * @param {LoginCredentials} credentials - Login credentials
+   * @returns {Promise<void>}
+   */
+  async function login(credentials: LoginCredentials): Promise<void> {
+    await authStore.login(credentials);
+  }
+
+  /**
+   * Logout current user
    *
    * @returns {Promise<void>}
    */
@@ -59,7 +67,7 @@ export function useAuth() {
   }
 
   /**
-   * Fetches current user profile
+   * Fetch current user profile
    *
    * @returns {Promise<void>}
    */
@@ -68,7 +76,7 @@ export function useAuth() {
   }
 
   /**
-   * Refreshes authentication token
+   * Manually refresh access token
    *
    * @returns {Promise<void>}
    */
@@ -77,7 +85,7 @@ export function useAuth() {
   }
 
   /**
-   * Clears error state
+   * Clear error state
    */
   function clearError(): void {
     authStore.clearError();
@@ -91,10 +99,12 @@ export function useAuth() {
     error,
     userName,
     userInitials,
+    userPermissions,
+    userRoles,
 
     // Methods
-    login,
     register,
+    login,
     logout,
     fetchCurrentUser,
     refreshToken,

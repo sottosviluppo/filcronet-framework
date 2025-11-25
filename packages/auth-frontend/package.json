@@ -1,6 +1,6 @@
 {
   "name": "@sottosviluppo/auth-frontend",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Authentication composables and utilities for Vue 3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,20 +33,21 @@
   "license": "UNLICENSED",
   "private": false,
   "peerDependencies": {
-    "axios": "^1.13.2",
     "pinia": "^3.0.4",
-    "vue": "^3.5.24"
+    "vue": "^3.5.24",
+    "vue-router": "^4.6.3"
   },
   "dependencies": {
     "@sottosviluppo/core": "workspace:*",
+    "@sottosviluppo/frontend-core": "workspace:*",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "axios": "^1.13.2",
     "pinia": "^3.0.4",
     "typescript": "^5.9.3",
-    "vue": "^3.5.24"
+    "vue": "^3.5.24",
+    "vue-router": "^4.6.3"
   },
   "packageManager": "pnpm@10.19.0"
 }

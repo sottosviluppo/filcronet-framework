@@ -1,6 +1,5 @@
 /**
  * Types module
- * Exports type definitions for auth frontend
  *
  * @packageDocumentation
  */

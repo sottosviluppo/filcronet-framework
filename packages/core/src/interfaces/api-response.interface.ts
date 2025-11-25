@@ -189,22 +189,39 @@ export interface IPaginationParams {
 
 /**
  * Token pair response
- * 
+ *
  * @export
  * @interface ITokenPair
  */
 export interface ITokenPair {
   /**
    * JWT access token (short-lived)
-   * 
+   *
    * @type {string}
    */
   accessToken: string;
 
   /**
    * JWT refresh token (long-lived)
-   * 
+   *
    * @type {string}
    */
   refreshToken: string;
+}
+
+/**
+ * Paginated API response
+ * Extends IApiResponse with pagination metadata
+ *
+ * @export
+ * @interface IPaginatedApiResponse
+ * @template T
+ */
+export interface IPaginatedApiResponse<T> extends IApiResponse<T[]> {
+  /**
+   * Pagination metadata
+   *
+   * @type {IPagination}
+   */
+  pagination: IPagination;
 }

@@ -132,8 +132,6 @@ export class PasswordValidator {
   /**
    * Returns detailed validation errors
    *
-   * @deprecated Use validatePassword() for better i18n support
-   * This method is kept for backward compatibility
    *
    * @static
    * @param {string} password - Password to validate

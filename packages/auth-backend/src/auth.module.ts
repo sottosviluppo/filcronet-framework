@@ -30,6 +30,8 @@ import { PasswordRecoveryService } from "./services/password-recovery.service";
 import { PermissionController } from "./controllers/permission.controller";
 import { SetupController } from "./controllers/setup.controller";
 import { BootstrapService } from "./services/bootstrap.service";
+import { APP_FILTER } from "@nestjs/core";
+import { HttpExceptionFilter } from "./filters/http-exception.filter";
 
 /**
  * Filcronet Authentication Module
@@ -109,6 +111,10 @@ export class FilcronetAuthModule {
         SetupController,
       ],
       providers: [
+        {
+          provide: APP_FILTER,
+          useClass: HttpExceptionFilter,
+        },
         {
           provide: "AUTH_OPTIONS",
           useValue: options,

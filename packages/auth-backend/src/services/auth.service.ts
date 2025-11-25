@@ -145,7 +145,7 @@ export class AuthService {
    */
   async refreshAccessToken(
     refreshToken: string
-  ): Promise<{ accessToken: string; refreshToken: string }> {
+  ): Promise<{ accessToken: string; refreshToken: string; user: any }> {
     try {
       const payload = this.jwtService.verify<JwtPayload>(refreshToken);
 
@@ -163,7 +163,12 @@ export class AuthService {
         throw new UnauthorizedException("Account not active");
       }
 
-      return this.generateTokenPair(user);
+      const tokens = await this.generateTokenPair(user);
+
+      return {
+        ...tokens,
+        user: user.toSafeObject(), // Include user data
+      };
     } catch (error) {
       throw new UnauthorizedException("Invalid or expired refresh token");
     }

@@ -13,9 +13,9 @@ import { RoleEntity } from "../entities/role.entity";
 import { CreateUserDto } from "../dto/create-user.dto";
 import { UpdateUserDto } from "../dto/update-user.dto";
 import {
-  IPaginationParams,
-  IPaginatedResponse,
   UserStatus,
+  IPaginatedApiResponse,
+  IPaginationParams,
 } from "@sottosviluppo/core";
 import { PasswordRecoveryService } from "./password-recovery.service";
 import { UserCreatedWithInvitation } from "../interfaces/user-invitation.interface";
@@ -136,7 +136,7 @@ export class UserService {
         );
       }
 
-      const { token, invitationUrl } =
+      const { invitationToken, invitationUrl } =
         await this.passwordRecoveryService.generateInvitation(
           savedUser.id,
           createUserDto.invitationUrl
@@ -144,7 +144,7 @@ export class UserService {
 
       return {
         user: savedUser,
-        invitationToken: token,
+        invitationToken,
         invitationUrl,
       };
     }
@@ -172,7 +172,7 @@ export class UserService {
    */
   async findAll(
     pagination?: IPaginationParams
-  ): Promise<IPaginatedResponse<UserEntity>> {
+  ): Promise<IPaginatedApiResponse<UserEntity>> {
     const page = pagination?.page || 1;
     const limit = pagination?.limit || 10;
     const skip = (page - 1) * limit;
@@ -182,7 +182,6 @@ export class UserService {
       .leftJoinAndSelect("user.roles", "roles")
       .leftJoinAndSelect("roles.permissions", "permissions");
 
-    // Apply sorting
     if (pagination?.sortBy) {
       const order = pagination.sortOrder || "ASC";
       queryBuilder.orderBy(`user.${pagination.sortBy}`, order);
@@ -203,6 +202,9 @@ export class UserService {
         limit,
         total,
         totalPages: Math.ceil(total / limit),
+      },
+      meta: {
+        timestamp: new Date().toISOString(),
       },
     };
   }
@@ -330,14 +332,14 @@ export class UserService {
    *
    * @param {string} userId - User UUID
    * @param {string} invitationUrlBase - Base URL for invitation
-   * @returns {Promise<{ token: string; invitationUrl: string }>}
+   * @returns {Promise<{ invitationToken: string; invitationUrl: string }>}
    * @throws {BadRequestException} If user already has password
    * @memberof UserService
    */
   async resendInvitation(
     userId: string,
     invitationUrlBase: string
-  ): Promise<{ token: string; invitationUrl: string }> {
+  ): Promise<{ invitationToken: string; invitationUrl: string }> {
     const user = await this.findOne(userId);
 
     // Check if user has password

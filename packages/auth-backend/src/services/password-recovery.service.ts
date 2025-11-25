@@ -230,16 +230,13 @@ export class PasswordRecoveryService {
    * Used by admin to invite users
    *
    * @param {string} userId - User ID
-   * @param {string} invitationUrlBase - Base URL for invitation (e.g., 'https://app.com/set-password')
-   * @returns {Promise<{ token: string; invitationUrl: string }>}
-   * @throws {NotFoundException} If user not found
-   * @throws {BadRequestException} If user already has password
-   * @memberof PasswordRecoveryService
+   * @param {string} invitationUrlBase - Base URL for invitation
+   * @returns {Promise<{ invitationToken: string; invitationUrl: string }>}
    */
   async generateInvitation(
     userId: string,
     invitationUrlBase: string
-  ): Promise<{ token: string; invitationUrl: string }> {
+  ): Promise<{ invitationToken: string; invitationUrl: string }> {
     const user = await this.userService.findOne(userId);
 
     if (!user) {
@@ -262,7 +259,7 @@ export class PasswordRecoveryService {
 
     // Generate invitation token WITH current password version
     const expiresIn = this.options.invitation?.expiresIn ?? "7d";
-    const token = this.authService.generateSpecialToken(
+    const invitationToken = this.authService.generateSpecialToken(
       user.id,
       user.email,
       TokenType.INVITATION,
@@ -270,18 +267,18 @@ export class PasswordRecoveryService {
       userWithPassword.passwordVersion || 0
     );
 
-    const invitationUrl = `${invitationUrlBase}?token=${token}`;
+    const invitationUrl = `${invitationUrlBase}?token=${invitationToken}`;
 
     // Send email if service is configured
     if (this.emailService) {
       await this.emailService.sendInvitationEmail(
         user.email,
-        token,
+        invitationToken,
         invitationUrl
       );
     }
 
-    return { token, invitationUrl };
+    return { invitationToken, invitationUrl };
   }
 
   /**

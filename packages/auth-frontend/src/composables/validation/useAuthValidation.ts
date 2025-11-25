@@ -1,23 +1,27 @@
 import { computed } from "vue";
-import { createValidationSchemas, type SchemaFactoryConfig } from "../schemas/schema-factory";
+import {
+  createValidationSchemas,
+  SchemaFactoryConfig,
+} from "../../schemas/schema-factory";
 
 /**
- * Composable for validation schemas with reactive message updates
- * Optional - only use if you need i18n support
+ * Composable for validation schemas with reactive i18n message updates
+ *
+ * **REQUIRED**: You must provide i18n translations for all validation messages.
  *
  * @param {() => SchemaFactoryConfig} getMessages - Function that returns current validation messages
- * @returns Validation schemas that update when messages change
+ * @returns Validation schemas that update automatically when locale changes
  *
  * @example
  * ```vue
  * <script setup>
  * import { useI18n } from 'vue-i18n';
- * import { useValidation } from '@filcronet/auth-frontend';
+ * import { useAuthValidation } from '@filcronet/auth-frontend';
  * import { PasswordErrorKey } from '@filcronet/core';
  *
  * const { t } = useI18n();
  *
- * const { loginSchema, registerSchema } = useValidation(() => ({
+ * const { loginSchema, registerSchema } = useAuthValidation(() => ({
  *   messages: {
  *     email: {
  *       invalid: t('validation.email.invalid'),
@@ -47,21 +51,13 @@ import { createValidationSchemas, type SchemaFactoryConfig } from "../schemas/sc
  *     [PasswordErrorKey.CommonPassword]: t('validation.password.commonPassword'),
  *   },
  * }));
- *
- * // Schemas update automatically when locale changes
  * </script>
  * ```
  */
-export function useValidation(getMessages: () => SchemaFactoryConfig) {
+export function useAuthValidation(getMessages: () => SchemaFactoryConfig) {
   const schemas = computed(() => createValidationSchemas(getMessages()));
 
   return {
-    loginSchema: computed(() => schemas.value.loginSchema),
-    registerSchema: computed(() => schemas.value.registerSchema),
-    createRegisterWithContext: (userContext: any) =>
-      schemas.value.createRegisterWithContext(userContext),
-    resetPasswordSchema: computed(() => schemas.value.resetPasswordSchema),
-    setPasswordSchema: computed(() => schemas.value.setPasswordSchema),
-    forgotPasswordSchema: computed(() => schemas.value.forgotPasswordSchema),
+    ...schemas.value,
   };
 }

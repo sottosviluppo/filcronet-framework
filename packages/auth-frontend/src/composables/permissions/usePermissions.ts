@@ -1,6 +1,11 @@
 import { computed } from "vue";
-import { useAuth } from "./useAuth";
-import type { PermissionString } from "@sottosviluppo/core";
+import { useAuth } from "../auth/useAuth";
+
+/**
+ * Permission string type
+ * Format: "resource:action"
+ */
+export type PermissionString = `${string}:${string}`;
 
 /**
  * Permissions composable
@@ -30,27 +35,15 @@ import type { PermissionString } from "@sottosviluppo/core";
  * ```
  */
 export function usePermissions() {
-  const { user } = useAuth();
+  const { userPermissions } = useAuth();
 
   /**
-   * Gets all permissions from user's roles
+   * All user permissions
    */
-  const permissions = computed(() => {
-    if (!user.value || !user.value.roles) return [];
-
-    const allPermissions = user.value.roles
-      .flatMap((role: any) => role.permissions || [])
-      .map(
-        (permission: any) =>
-          `${permission.resource}:${permission.action}` as PermissionString
-      );
-
-    // Remove duplicates
-    return [...new Set(allPermissions)];
-  });
+  const permissions = computed(() => userPermissions.value || []);
 
   /**
-   * Checks if user has a specific permission
+   * Check if user has a specific permission
    *
    * @param {PermissionString} permission - Permission to check (e.g., 'users:create')
    * @returns {boolean} True if user has the permission
@@ -67,7 +60,7 @@ export function usePermissions() {
   }
 
   /**
-   * Checks if user has any of the specified permissions
+   * Check if user has any of the specified permissions
    *
    * @param {PermissionString[]} permissionList - Array of permissions
    * @returns {boolean} True if user has at least one permission
@@ -84,7 +77,7 @@ export function usePermissions() {
   }
 
   /**
-   * Checks if user has all specified permissions
+   * Check if user has all specified permissions
    *
    * @param {PermissionString[]} permissionList - Array of permissions
    * @returns {boolean} True if user has all permissions
@@ -101,7 +94,7 @@ export function usePermissions() {
   }
 
   /**
-   * Checks if user can manage a resource (has 'resource:manage' permission)
+   * Check if user can manage a resource (has 'resource:manage' permission)
    *
    * @param {string} resource - Resource name (e.g., 'users', 'products')
    * @returns {boolean} True if user can manage the resource

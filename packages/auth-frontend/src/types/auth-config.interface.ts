@@ -1,12 +1,15 @@
+import { ITokenStorage } from "../interfaces/token-storage.interface";
+import { IAuthHttpClient } from "../interfaces";
+
 /**
- * Configuration options for auth frontend plugin
+ * Authentication configuration options
  *
  * @export
  * @interface AuthConfig
  */
 export interface AuthConfig {
   /**
-   * Base URL for API requests
+   * Base URL for API requests (REQUIRED)
    * Example: 'http://localhost:3000' or 'https://api.example.com'
    *
    * @type {string}
@@ -14,87 +17,59 @@ export interface AuthConfig {
   apiBaseUrl: string;
 
   /**
-   * API version prefix
+   * API version prefix (REQUIRED)
    * Example: 'v1' → /v1/auth/login
    *
    * @type {string}
    */
-  apiVersion?: string;
+  apiVersion: string;
 
   /**
-   * Storage type for tokens
+   * Custom HTTP client implementation (optional)
+   * Default: AxiosHttpClient
    *
-   * @type {('localStorage' | 'sessionStorage')}
-   * @default 'localStorage'
+   * @type {IAuthHttpClient}
    */
-  storage?: "localStorage" | "sessionStorage";
+  httpClient?: IAuthHttpClient;
 
   /**
-   * Redirect path when user is not authenticated
+   * Custom token storage implementation (optional)
+   * Default: MemoryTokenStorage (XSS-safe)
+   *
+   * @type {ITokenStorage}
+   */
+  storage?: ITokenStorage;
+
+  /**
+   * Redirect path when user is not authenticated (optional)
+   * Default: '/login'
    *
    * @type {string}
-   * @default '/login'
    */
   redirectOnUnauth?: string;
 
   /**
-   * Redirect path after successful login
+   * Redirect path after successful login (optional)
+   * Default: '/'
    *
    * @type {string}
-   * @default '/'
    */
   redirectOnLogin?: string;
 
   /**
-   * Automatically refresh token before expiry
+   * Automatically schedule token refresh before expiry (optional)
+   * Default: true
    *
    * @type {boolean}
-   * @default false
    */
   autoRefreshToken?: boolean;
 
   /**
-   * Token refresh interval in milliseconds
+   * Refresh token X milliseconds before expiration (optional)
+   * Default: 60000 (1 minute)
    * Only used if autoRefreshToken is true
    *
    * @type {number}
-   * @default 300000 (5 minutes)
    */
-  refreshInterval?: number;
-}
-
-/**
- * Login credentials
- *
- * @export
- * @interface LoginCredentials
- */
-export interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-/**
- * Registration data
- *
- * @export
- * @interface RegisterData
- */
-export interface RegisterData {
-  email: string;
-  password: string;
-  username?: string;
-  firstName?: string;
-  lastName?: string;
-}
-
-/**
- * Authentication response from API
- *
- * @export
- * @interface AuthResponse
- */
-export interface AuthResponse {
-  user: any; // IUser from @filcronet/core
-  accessToken: string;
+  refreshBeforeExpiry?: number;
 }

@@ -1,8 +1,5 @@
-import { computed } from "vue";
-import {
-  PasswordValidator,
-  type IPasswordErrorMessages,
-} from "@sottosviluppo/core";
+import { IPasswordErrorMessages, PasswordValidator } from "@sottosviluppo/core";
+import { computed, toValue, type MaybeRefOrGetter } from "vue";
 
 /**
  * Options for password strength composable
@@ -19,43 +16,49 @@ export interface UsePasswordStrengthOptions {
 }
 
 /**
+ * User context for password validation (can be refs or plain values)
+ */
+export interface PasswordUserContext {
+  email?: MaybeRefOrGetter<string | undefined>;
+  username?: MaybeRefOrGetter<string | undefined>;
+  firstName?: MaybeRefOrGetter<string | undefined>;
+  lastName?: MaybeRefOrGetter<string | undefined>;
+}
+
+/**
  * Password strength composable
  * Provides real-time password strength feedback
  *
  * @export
  * @function usePasswordStrength
+ * @param {MaybeRefOrGetter<string>} password - Password value (ref, computed, getter, or plain string)
+ * @param {PasswordUserContext} [userContext] - User context for personal data validation
+ * @param {UsePasswordStrengthOptions} [options] - Configuration options
+ * @returns Password strength indicators and validation errors
  *
  * @example
  * ```vue
  * <script setup>
- * import { usePasswordStrength } from '@filcronet/auth-frontend';
+ * import { ref } from 'vue';
+ * import { usePasswordStrength } from '@sottosviluppo/auth-frontend';
  * import { useI18n } from 'vue-i18n';
- * import { PasswordErrorKey } from '@filcronet/core';
+ * import { PasswordErrorKey } from '@sottosviluppo/core';
  *
  * const { t } = useI18n();
  * const password = ref('');
+ * const email = ref('user@example.com');
  *
- * // With custom messages
- * const { strength, strengthLabel, errors } = usePasswordStrength(
+ * // Passa direttamente i refs - nessun wrapping necessario!
+ * const { strength, strengthLabel, errors, strengthColor } = usePasswordStrength(
  *   password,
- *   undefined,
+ *   { email }, // refs o valori plain - funziona con entrambi
  *   {
  *     errorMessages: {
  *       [PasswordErrorKey.TooShort]: t('validation.password.tooShort'),
  *       [PasswordErrorKey.NoUppercase]: t('validation.password.noUppercase'),
- *       [PasswordErrorKey.NoLowercase]: t('validation.password.noLowercase'),
- *       [PasswordErrorKey.NoNumber]: t('validation.password.noNumber'),
- *       [PasswordErrorKey.NoSpecialChar]: t('validation.password.noSpecialChar'),
- *       [PasswordErrorKey.ContainsPersonalData]: t('validation.password.containsPersonalData'),
- *       [PasswordErrorKey.CommonPassword]: t('validation.password.commonPassword'),
+ *       // ... altri messaggi
  *     }
  *   }
- * );
- *
- * // OR without custom messages (returns keys as strings)
- * const { errors: errorKeys } = usePasswordStrength(password);
- * const translatedErrors = computed(() =>
- *   errorKeys.value.map(key => t(`validation.password.${key}`))
  * );
  * </script>
  *
@@ -65,30 +68,35 @@ export interface UsePasswordStrengthOptions {
  *     Strength: {{ strengthLabel }}
  *   </div>
  *   <ul v-if="errors.length">
- *     <li v-for="error in errors">{{ error }}</li>
+ *     <li v-for="error in errors" :key="error">{{ error }}</li>
  *   </ul>
  * </template>
  * ```
  */
 export function usePasswordStrength(
-  password: { value: string },
-  userContext?: {
-    email?: { value: string };
-    username?: { value: string };
-    firstName?: { value: string };
-    lastName?: { value: string };
-  },
+  password: MaybeRefOrGetter<string>,
+  userContext?: PasswordUserContext,
   options?: UsePasswordStrengthOptions
 ) {
+  /**
+   * Password strength score (0-4)
+   */
   const strength = computed(() => {
-    if (!password.value) return 0;
-    return PasswordValidator.getPasswordStrength(password.value);
+    const pwd = toValue(password);
+    if (!pwd) return 0;
+    return PasswordValidator.getPasswordStrength(pwd);
   });
 
+  /**
+   * Human-readable strength label
+   */
   const strengthLabel = computed(() => {
     return PasswordValidator.getStrengthLabel(strength.value);
   });
 
+  /**
+   * Color for strength indicator
+   */
   const strengthColor = computed(() => {
     switch (strength.value) {
       case 0:
@@ -107,21 +115,22 @@ export function usePasswordStrength(
   });
 
   /**
-   * Error keys or translated messages
+   * Validation errors (error keys or translated messages)
    */
   const errors = computed(() => {
-    if (!password.value) return [];
+    const pwd = toValue(password);
+    if (!pwd) return [];
 
     const context = userContext
       ? {
-          email: userContext.email?.value,
-          username: userContext.username?.value,
-          firstName: userContext.firstName?.value,
-          lastName: userContext.lastName?.value,
+          email: toValue(userContext.email),
+          username: toValue(userContext.username),
+          firstName: toValue(userContext.firstName),
+          lastName: toValue(userContext.lastName),
         }
       : undefined;
 
-    const result = PasswordValidator.validatePassword(password.value, context);
+    const result = PasswordValidator.validatePassword(pwd, context);
 
     // If custom messages provided, map keys to messages
     if (options?.errorMessages) {
@@ -132,6 +141,9 @@ export function usePasswordStrength(
     return result.errorKeys as string[];
   });
 
+  /**
+   * Whether password is valid
+   */
   const isValid = computed(() => errors.value.length === 0);
 
   /**

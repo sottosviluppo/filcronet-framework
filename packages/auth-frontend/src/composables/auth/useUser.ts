@@ -99,10 +99,10 @@ export function useUser() {
   /**
    * User's role names
    */
-  const roleNames = computed(() => roles.value.map((role: any) => role.name));
+  const roleNames = computed(() => roles.value.map((role) => role.name));
 
   /**
-   * Checks if user has a specific role
+   * Check if user has a specific role
    *
    * @param {string} roleName - Role name to check
    * @returns {boolean}
@@ -112,23 +112,23 @@ export function useUser() {
   }
 
   /**
-   * Checks if user has any of the specified roles
+   * Check if user has any of the specified roles
    *
    * @param {string[]} roleNames - Array of role names
    * @returns {boolean}
    */
-  function hasAnyRole(roleNames: string[]): boolean {
-    return roleNames.some((roleName) => hasRole(roleName));
+  function hasAnyRole(roles: string[]): boolean {
+    return roles.some((roleName) => hasRole(roleName));
   }
 
   /**
-   * Checks if user has all specified roles
+   * Check if user has all specified roles
    *
    * @param {string[]} roleNames - Array of role names
    * @returns {boolean}
    */
-  function hasAllRoles(roleNames: string[]): boolean {
-    return roleNames.every((roleName) => hasRole(roleName));
+  function hasAllRoles(roles: string[]): boolean {
+    return roles.every((roleName) => hasRole(roleName));
   }
 
   return {

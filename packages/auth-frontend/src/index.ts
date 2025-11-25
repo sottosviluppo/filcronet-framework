@@ -11,14 +11,32 @@ export * from "./api";
 // Stores
 export * from "./stores";
 
+// Types
+export * from "./types";
+
 // Composables
 export * from "./composables";
 
-// Types
-export * from "./types";
+// Router
+export * from "./router";
+
+// Directives
+export * from "./directives";
+
+// Components
+export * from "./components";
+
+// Schemas
+export * from "./schemas";
 
 // Utils
 export * from "./utils";
 
-// Validation Schemas (Zod)
-export * from './schemas';
+// Interfaces
+export * from "./interfaces";
+
+// Storage
+export * from "./storage";
+
+// Plugin
+export { createAuth } from "./plugin";

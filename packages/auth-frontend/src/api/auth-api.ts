@@ -1,156 +1,262 @@
-import axios, { AxiosInstance } from "axios";
-import type {
-  AuthConfig,
-  LoginCredentials,
-  RegisterData,
-  AuthResponse,
-} from "../types";
-import { TokenStorage } from "../utils";
+import { IApiResponse, IUser } from "@sottosviluppo/core";
+import { ITokenStorage } from "../interfaces/token-storage.interface";
+import { IAuthHttpClient } from "../interfaces";
+
+/**
+ * Login credentials
+ */
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+/**
+ * Registration data
+ */
+export interface RegisterData {
+  email: string;
+  password: string;
+  username?: string;
+  firstName?: string;
+  lastName?: string;
+}
+
+/**
+ * Auth response (without refresh token, it's in HttpOnly cookie)
+ */
+export interface AuthResponse {
+  user: IUser;
+  accessToken: string;
+}
 
 /**
  * Authentication API client
- * Handles all API calls related to authentication
+ * Handles all auth-related API calls
  *
  * @export
  * @class AuthApi
  */
 export class AuthApi {
-  private client: AxiosInstance;
-  private tokenStorage: TokenStorage;
-  private config: AuthConfig;
+  constructor(
+    private httpClient: IAuthHttpClient,
+    private storage: ITokenStorage
+  ) {}
 
   /**
-   * Creates an instance of AuthApi
+   * Register a new user
    *
-   * @param {AuthConfig} config - Authentication configuration
+   * @param {RegisterData} data - Registration data
+   * @returns {Promise<AuthResponse>}
    * @memberof AuthApi
-   */
-  constructor(config: AuthConfig) {
-    this.config = config;
-    this.tokenStorage = new TokenStorage(config.storage);
-
-    const baseURL = config.apiVersion
-      ? `${config.apiBaseUrl}/${config.apiVersion}`
-      : config.apiBaseUrl;
-
-    this.client = axios.create({
-      baseURL,
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    // Add token to requests automatically
-    this.client.interceptors.request.use((config) => {
-      const token = this.tokenStorage.getToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-      }
-      return config;
-    });
-
-    // Handle 401 responses
-    this.client.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401) {
-          this.tokenStorage.clear();
-
-          if (this.config.redirectOnUnauth && typeof window !== "undefined") {
-            window.location.href = this.config.redirectOnUnauth;
-          }
-        }
-        return Promise.reject(error);
-      }
-    );
-  }
-
-  /**
-   * Logs in user with credentials
    *
-   * @param {LoginCredentials} credentials - User login credentials
-   * @returns {Promise<AuthResponse>} Authentication response with user and token
-   * @memberof AuthApi
-   */
-  async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    const response = await this.client.post<AuthResponse>(
-      "/auth/login",
-      credentials
-    );
-
-    this.tokenStorage.setToken(response.data.accessToken);
-    this.tokenStorage.setUser(response.data.user);
-
-    return response.data;
-  }
-
-  /**
-   * Registers a new user
-   *
-   * @param {RegisterData} data - User registration data
-   * @returns {Promise<AuthResponse>} Authentication response with user and token
-   * @memberof AuthApi
+   * @example
+   * ```typescript
+   * const response = await authApi.register({
+   *   email: 'user@example.com',
+   *   password: 'SecurePass123!',
+   *   firstName: 'John',
+   *   lastName: 'Doe'
+   * });
+   * ```
    */
   async register(data: RegisterData): Promise<AuthResponse> {
-    const response = await this.client.post<AuthResponse>(
+    const response = await this.httpClient.post<IApiResponse<AuthResponse>>(
       "/auth/register",
       data
     );
 
-    this.tokenStorage.setToken(response.data.accessToken);
-    this.tokenStorage.setUser(response.data.user);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Registration failed");
+    }
+
+    // Store token and user
+    this.storage.setToken(response.data.accessToken);
+    this.storage.setUser(response.data.user);
+    this.httpClient.setAuthToken(response.data.accessToken);
 
     return response.data;
   }
 
   /**
-   * Logs out current user
-   * Clears local authentication data
+   * Login with credentials
+   *
+   * @param {LoginCredentials} credentials - Login credentials
+   * @returns {Promise<AuthResponse>}
+   * @memberof AuthApi
+   *
+   * @example
+   * ```typescript
+   * const response = await authApi.login({
+   *   email: 'user@example.com',
+   *   password: 'SecurePass123!'
+   * });
+   * ```
+   */
+  async login(credentials: LoginCredentials): Promise<AuthResponse> {
+    const response = await this.httpClient.post<IApiResponse<AuthResponse>>(
+      "/auth/login",
+      credentials
+    );
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Login failed");
+    }
+
+    // Store token and user
+    this.storage.setToken(response.data.accessToken);
+    this.storage.setUser(response.data.user);
+    this.httpClient.setAuthToken(response.data.accessToken);
+
+    return response.data;
+  }
+
+  /**
+   * Refresh access token using HttpOnly cookie
+   *
+   * @returns {Promise<AuthResponse>}
+   * @memberof AuthApi
+   */
+  async refreshToken(): Promise<AuthResponse> {
+    const response = await this.httpClient.post<IApiResponse<AuthResponse>>(
+      "/auth/refresh"
+    );
+
+    if (!response.success || !response.data) {
+      this.storage.clear();
+      this.httpClient.setAuthToken(null);
+      throw new Error(response.message || "Token refresh failed");
+    }
+
+    // Update stored token and user
+    this.storage.setToken(response.data.accessToken);
+    this.storage.setUser(response.data.user);
+    this.httpClient.setAuthToken(response.data.accessToken);
+
+    return response.data;
+  }
+
+  /**
+   * Logout (clears cookie and local state)
    *
    * @returns {Promise<void>}
    * @memberof AuthApi
    */
   async logout(): Promise<void> {
-    this.tokenStorage.clear();
+    await this.httpClient.post<IApiResponse<void>>("/auth/logout");
+
+    // Clear local storage
+    this.storage.clear();
+    this.httpClient.setAuthToken(null);
   }
 
   /**
-   * Fetches current authenticated user profile
+   * Get current user profile
    *
-   * @returns {Promise<any>} User profile data
+   * @returns {Promise<IUser>}
    * @memberof AuthApi
    */
-  async getCurrentUser(): Promise<any> {
-    const response = await this.client.get("/auth/me");
+  async getCurrentUser(): Promise<IUser> {
+    const response = await this.httpClient.get<IApiResponse<IUser>>("/auth/me");
 
-    this.tokenStorage.setUser(response.data);
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Failed to fetch user");
+    }
+
+    // Update stored user
+    this.storage.setUser(response.data);
 
     return response.data;
   }
 
   /**
-   * Refreshes authentication token
+   * Request password reset
    *
-   * @returns {Promise<string>} New access token
+   * @param {string} email - User email
+   * @param {string} resetUrl - Base URL for reset page
+   * @returns {Promise<void>}
    * @memberof AuthApi
    */
-  async refreshToken(): Promise<string> {
-    const response = await this.client.post<{ accessToken: string }>(
-      "/auth/refresh"
-    );
-
-    this.tokenStorage.setToken(response.data.accessToken);
-
-    return response.data.accessToken;
+  async forgotPassword(email: string, resetUrl: string): Promise<void> {
+    await this.httpClient.post<IApiResponse<void>>("/auth/forgot-password", {
+      email,
+      resetUrl,
+    });
   }
 
   /**
-   * Gets the Axios client instance for custom API calls
+   * Reset password with token
    *
-   * @returns {AxiosInstance}
+   * @param {string} token - Reset token
+   * @param {string} newPassword - New password
+   * @returns {Promise<void>}
    * @memberof AuthApi
    */
-  getClient(): AxiosInstance {
-    return this.client;
+  async resetPassword(token: string, newPassword: string): Promise<void> {
+    await this.httpClient.post<IApiResponse<void>>("/auth/reset-password", {
+      token,
+      newPassword,
+    });
+  }
+
+  /**
+   * Set password from invitation
+   *
+   * @param {string} token - Invitation token
+   * @param {string} password - Password to set
+   * @returns {Promise<void>}
+   * @memberof AuthApi
+   */
+  async setPassword(token: string, password: string): Promise<void> {
+    await this.httpClient.post<IApiResponse<void>>("/auth/set-password", {
+      token,
+      password,
+    });
+  }
+
+  /**
+   * Validate token without consuming it
+   *
+   * @param {string} token - Token to validate
+   * @param {'password_reset' | 'invitation'} type - Token type
+   * @returns {Promise<{ valid: boolean; email?: string }>}
+   * @memberof AuthApi
+   */
+  async validateToken(
+    token: string,
+    type: "password_reset" | "invitation"
+  ): Promise<{ valid: boolean; email?: string }> {
+    const response = await this.httpClient.get<
+      IApiResponse<{ valid: boolean; email?: string }>
+    >("/auth/validate-token", {
+      params: { token, type },
+    });
+
+    return response.data || { valid: false };
+  }
+
+  /**
+   * Resend invitation to user
+   *
+   * @param {string} userId - User ID
+   * @param {string} invitationUrl - Base URL for invitation page
+   * @returns {Promise<{ invitationToken: string; invitationUrl: string }>}
+   * @memberof AuthApi
+   */
+  async resendInvitation(
+    userId: string,
+    invitationUrl: string
+  ): Promise<{ invitationToken: string; invitationUrl: string }> {
+    const response = await this.httpClient.post<
+      IApiResponse<{ invitationToken: string; invitationUrl: string }>
+    >("/auth/resend-invitation", {
+      userId,
+      invitationUrl,
+    });
+
+    if (!response.success || !response.data) {
+      throw new Error(response.message || "Failed to resend invitation");
+    }
+
+    return response.data;
   }
 }
