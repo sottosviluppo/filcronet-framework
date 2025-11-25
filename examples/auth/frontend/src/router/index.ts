@@ -14,6 +14,10 @@ const router = createRouter({
       component: () => import("@/views/Home.vue"),
       beforeEnter: requireAuth,
     },
+    {
+      path: "/forbidden",
+      component: () => import("@/views/Forbidden.vue"),
+    },
   ],
 });
 

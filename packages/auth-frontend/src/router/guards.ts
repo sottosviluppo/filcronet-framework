@@ -4,10 +4,6 @@ import type { PermissionString } from "../composables/permissions/usePermissions
 
 /**
  * Helper to ensure auth store is initialized
- * Waits for session restoration from HttpOnly cookie
- *
- * @private
- * @returns {Promise<void>}
  */
 async function ensureInitialized(): Promise<void> {
   const authStore = useAuthStore();
@@ -15,23 +11,25 @@ async function ensureInitialized(): Promise<void> {
 }
 
 /**
+ * Get redirect path from config or use default
+ */
+function getLoginRedirect(): string {
+  const authStore = useAuthStore();
+  const config = authStore.getConfig();
+  return config?.redirectOnUnauth || "/login";
+}
+
+/**
+ * Get forbidden redirect path from config or use default
+ */
+function getForbiddenRedirect(): string {
+  const authStore = useAuthStore();
+  const config = authStore.getConfig();
+  return config?.redirectOnForbidden || "/forbidden";
+}
+
+/**
  * Navigation guard that requires authentication
- * Redirects to login if user is not authenticated
- *
- * @export
- * @param {RouteLocationNormalized} to - Target route
- * @param {RouteLocationNormalized} from - Current route
- * @param {NavigationGuardNext} next - Navigation function
- *
- * @example
- * ```typescript
- * // In router config
- * {
- *   path: '/dashboard',
- *   component: Dashboard,
- *   beforeEnter: requireAuth
- * }
- * ```
  */
 export async function requireAuth(
   to: RouteLocationNormalized,
@@ -43,8 +41,9 @@ export async function requireAuth(
   const authStore = useAuthStore();
 
   if (!authStore.isAuthenticated) {
+    const loginPath = getLoginRedirect();
     next({
-      name: "login",
+      path: loginPath,
       query: { redirect: to.fullPath },
     });
   } else {
@@ -54,26 +53,6 @@ export async function requireAuth(
 
 /**
  * Navigation guard that requires specific permissions
- * User must have ALL specified permissions to access the route
- *
- * @export
- * @param {PermissionString[]} requiredPermissions - Required permissions
- * @returns {Function} Navigation guard function
- *
- * @example
- * ```typescript
- * {
- *   path: '/users',
- *   component: UsersList,
- *   beforeEnter: requirePermissions(['users:read'])
- * }
- *
- * {
- *   path: '/users/create',
- *   component: UserCreate,
- *   beforeEnter: requirePermissions(['users:create', 'users:read'])
- * }
- * ```
  */
 export function requirePermissions(requiredPermissions: PermissionString[]) {
   return async (
@@ -86,21 +65,21 @@ export function requirePermissions(requiredPermissions: PermissionString[]) {
     const authStore = useAuthStore();
 
     if (!authStore.isAuthenticated) {
+      const loginPath = getLoginRedirect();
       next({
-        name: "login",
+        path: loginPath,
         query: { redirect: to.fullPath },
       });
       return;
     }
 
     const userPermissions = authStore.userPermissions || [];
-
     const hasPermission = requiredPermissions.every((permission) =>
       userPermissions.includes(permission)
     );
 
     if (!hasPermission) {
-      next({ name: "forbidden" });
+      next({ path: getForbiddenRedirect() });
     } else {
       next();
     }
@@ -109,20 +88,6 @@ export function requirePermissions(requiredPermissions: PermissionString[]) {
 
 /**
  * Navigation guard that requires ANY of the specified permissions
- * User needs at least ONE permission to access the route
- *
- * @export
- * @param {PermissionString[]} permissions - Required permissions (any)
- * @returns {Function} Navigation guard function
- *
- * @example
- * ```typescript
- * {
- *   path: '/content',
- *   component: ContentPage,
- *   beforeEnter: requireAnyPermission(['posts:read', 'pages:read'])
- * }
- * ```
  */
 export function requireAnyPermission(permissions: PermissionString[]) {
   return async (
@@ -135,21 +100,21 @@ export function requireAnyPermission(permissions: PermissionString[]) {
     const authStore = useAuthStore();
 
     if (!authStore.isAuthenticated) {
+      const loginPath = getLoginRedirect();
       next({
-        name: "login",
+        path: loginPath,
         query: { redirect: to.fullPath },
       });
       return;
     }
 
     const userPermissions = authStore.userPermissions || [];
-
     const hasAnyPermission = permissions.some((permission) =>
       userPermissions.includes(permission)
     );
 
     if (!hasAnyPermission) {
-      next({ name: "forbidden" });
+      next({ path: getForbiddenRedirect() });
     } else {
       next();
     }
@@ -158,19 +123,6 @@ export function requireAnyPermission(permissions: PermissionString[]) {
 
 /**
  * Navigation guard that requires specific role
- *
- * @export
- * @param {string[]} roleNames - Required role names
- * @returns {Function} Navigation guard function
- *
- * @example
- * ```typescript
- * {
- *   path: '/admin',
- *   component: AdminPanel,
- *   beforeEnter: requireRole(['admin', 'super-admin'])
- * }
- * ```
  */
 export function requireRole(roleNames: string[]) {
   return async (
@@ -183,8 +135,9 @@ export function requireRole(roleNames: string[]) {
     const authStore = useAuthStore();
 
     if (!authStore.isAuthenticated) {
+      const loginPath = getLoginRedirect();
       next({
-        name: "login",
+        path: loginPath,
         query: { redirect: to.fullPath },
       });
       return;
@@ -194,7 +147,7 @@ export function requireRole(roleNames: string[]) {
     const hasRole = roleNames.some((role) => userRoles.includes(role));
 
     if (!hasRole) {
-      next({ name: "forbidden" });
+      next({ path: getForbiddenRedirect() });
     } else {
       next();
     }
@@ -202,22 +155,7 @@ export function requireRole(roleNames: string[]) {
 }
 
 /**
- * Navigation guard for guest-only routes (login, register)
- * Redirects to home if already authenticated
- *
- * @export
- * @param {RouteLocationNormalized} to - Target route
- * @param {RouteLocationNormalized} from - Current route
- * @param {NavigationGuardNext} next - Navigation function
- *
- * @example
- * ```typescript
- * {
- *   path: '/login',
- *   component: Login,
- *   beforeEnter: guestOnly
- * }
- * ```
+ * Navigation guard for guest-only routes
  */
 export async function guestOnly(
   to: RouteLocationNormalized,
@@ -229,7 +167,9 @@ export async function guestOnly(
   const authStore = useAuthStore();
 
   if (authStore.isAuthenticated) {
-    next({ name: "home" });
+    const config = authStore.getConfig();
+    const homePath = config?.redirectOnLogin || "/";
+    next({ path: homePath });
   } else {
     next();
   }

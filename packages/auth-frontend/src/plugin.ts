@@ -52,6 +52,7 @@ export function createAuth(config: AuthConfig) {
         storage: config.storage,
         redirectOnUnauth: config.redirectOnUnauth ?? "/login",
         redirectOnLogin: config.redirectOnLogin ?? "/",
+        redirectOnForbidden: config.redirectOnForbidden ?? "/forbidden",
         autoRefreshToken: config.autoRefreshToken ?? true,
         refreshBeforeExpiry: config.refreshBeforeExpiry ?? 60000,
       };

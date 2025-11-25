@@ -29,7 +29,7 @@ const onSubmit = handleSubmit(async (values) => {
     try {
         await login({ email: values.email, password: values.password });
         const redirect = route.query.redirect as string;
-        router.push(redirect || '/dashboard');
+        router.push(redirect || '/');
     } catch (e) {
         console.error('Login failed', e);
     }
@@ -44,7 +44,7 @@ const onSubmit = handleSubmit(async (values) => {
         <div>
             <label for="email" class="block mb-3 font-bold">{{
                 $t("login.email")
-            }}</label>
+                }}</label>
             <IconField>
                 <InputIcon class="pi pi-envelope" />
                 <InputText id="email" autocomplete="off" :placeholder="$t('login.email')" type="email"
@@ -55,7 +55,7 @@ const onSubmit = handleSubmit(async (values) => {
         <div>
             <label for="description" class="block mb-3 font-bold">{{
                 $t("login.password")
-            }}</label>
+                }}</label>
             <IconField>
                 <InputIcon class="pi pi-key" />
                 <Password id="password" type="password" :placeholder="$t('login.password')" v-model="password"

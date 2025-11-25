@@ -57,6 +57,14 @@ export interface AuthConfig {
   redirectOnLogin?: string;
 
   /**
+   * Redirect path when user lacks permissions (optional)
+   * Default: '/forbidden'
+   *
+   * @type {string}
+   */
+  redirectOnForbidden?: string;
+
+  /**
    * Automatically schedule token refresh before expiry (optional)
    * Default: true
    *

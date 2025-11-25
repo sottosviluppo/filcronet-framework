@@ -106,6 +106,14 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   // ===== ACTIONS =====
 
   /**
+   * Get current auth configuration
+   * @returns {AuthConfig | null}
+   */
+  function getConfig(): AuthConfig | null {
+    return config || null;
+  }
+
+  /**
    * Initialize auth store with configuration
    * MUST be called before using the store (typically in plugin or main.ts)
    *
@@ -296,12 +304,16 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
     try {
       await authApi.logout();
-      clearAuthState();
     } catch (err: any) {
       error.value = err.message || "Logout failed";
       throw err;
     } finally {
+      clearAuthState();
       isLoading.value = false;
+
+      if (config?.redirectOnUnauth && typeof window !== "undefined") {
+        window.location.href = config.redirectOnUnauth;
+      }
     }
   }
 
@@ -455,6 +467,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
     userRoles,
 
     // Actions
+    getConfig,
     initialize,
     restoreSession,
     waitForInit,
