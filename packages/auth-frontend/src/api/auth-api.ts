@@ -62,7 +62,8 @@ export class AuthApi {
   async register(data: RegisterData): Promise<AuthResponse> {
     const response = await this.httpClient.post<IApiResponse<AuthResponse>>(
       "/auth/register",
-      data
+      data,
+      { skipAuthRefresh: true }
     );
 
     if (!response.success || !response.data) {
@@ -95,7 +96,8 @@ export class AuthApi {
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
     const response = await this.httpClient.post<IApiResponse<AuthResponse>>(
       "/auth/login",
-      credentials
+      credentials,
+      { skipAuthRefresh: true }
     );
 
     if (!response.success || !response.data) {
@@ -118,7 +120,9 @@ export class AuthApi {
    */
   async refreshToken(): Promise<AuthResponse> {
     const response = await this.httpClient.post<IApiResponse<AuthResponse>>(
-      "/auth/refresh"
+      "/auth/refresh",
+      undefined,
+      { skipAuthRefresh: true }
     );
 
     if (!response.success || !response.data) {
@@ -142,7 +146,9 @@ export class AuthApi {
    * @memberof AuthApi
    */
   async logout(): Promise<void> {
-    await this.httpClient.post<IApiResponse<void>>("/auth/logout");
+    await this.httpClient.post<IApiResponse<void>>("/auth/logout", undefined, {
+      skipAuthRefresh: true,
+    });
 
     // Clear local storage
     this.storage.clear();
@@ -177,10 +183,16 @@ export class AuthApi {
    * @memberof AuthApi
    */
   async forgotPassword(email: string, resetUrl: string): Promise<void> {
-    await this.httpClient.post<IApiResponse<void>>("/auth/forgot-password", {
-      email,
-      resetUrl,
-    });
+    await this.httpClient.post<IApiResponse<void>>(
+      "/auth/forgot-password",
+      {
+        email,
+        resetUrl,
+      },
+      {
+        skipAuthRefresh: true,
+      }
+    );
   }
 
   /**
@@ -192,10 +204,16 @@ export class AuthApi {
    * @memberof AuthApi
    */
   async resetPassword(token: string, newPassword: string): Promise<void> {
-    await this.httpClient.post<IApiResponse<void>>("/auth/reset-password", {
-      token,
-      newPassword,
-    });
+    await this.httpClient.post<IApiResponse<void>>(
+      "/auth/reset-password",
+      {
+        token,
+        newPassword,
+      },
+      {
+        skipAuthRefresh: true,
+      }
+    );
   }
 
   /**
@@ -207,10 +225,16 @@ export class AuthApi {
    * @memberof AuthApi
    */
   async setPassword(token: string, password: string): Promise<void> {
-    await this.httpClient.post<IApiResponse<void>>("/auth/set-password", {
-      token,
-      password,
-    });
+    await this.httpClient.post<IApiResponse<void>>(
+      "/auth/set-password",
+      {
+        token,
+        password,
+      },
+      {
+        skipAuthRefresh: true,
+      }
+    );
   }
 
   /**
@@ -229,6 +253,7 @@ export class AuthApi {
       IApiResponse<{ valid: boolean; email?: string }>
     >("/auth/validate-token", {
       params: { token, type },
+      skipAuthRefresh: true,
     });
 
     return response.data || { valid: false };

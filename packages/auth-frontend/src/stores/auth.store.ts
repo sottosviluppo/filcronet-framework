@@ -152,7 +152,11 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
     httpClient.onUnauthorized(() => {
       clearAuthState();
 
-      if (config.redirectOnUnauth && typeof window !== "undefined") {
+      if (
+        isInitialized.value &&
+        config.redirectOnUnauth &&
+        typeof window !== "undefined"
+      ) {
         window.location.href = config.redirectOnUnauth;
       }
     });
