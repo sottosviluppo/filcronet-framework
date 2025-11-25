@@ -1,37 +1,29 @@
 <script setup lang="ts">
-import { useAuth, useLoginValidation } from '@sottosviluppo/auth-frontend';
+import { useForgotPasswordValidation, usePasswordRecovery } from '@sottosviluppo/auth-frontend';
+import { toTypedSchema } from '@vee-validate/zod';
 import { useForm } from 'vee-validate';
 import { useI18n } from 'vue-i18n';
-import { toTypedSchema } from "@vee-validate/zod";
-import { useRoute, useRouter } from 'vue-router';
 
-const router = useRouter();
-const route = useRoute();
-const { login, isLoading, error } = useAuth();
+const { forgotPassword, error, isLoading, successMessage } = usePasswordRecovery();
 const { t } = useI18n();
-const loginSchema = useLoginValidation({
+const forgotPasswordSchema = useForgotPasswordValidation({
     email: {
         required: t('validation.email.required'),
         invalid: t('validation.email.invalid'),
     },
-    password: {
-        required: t('validation.password.required'),
-    },
 });
 
 const { errors, handleSubmit, defineField } = useForm({
-    validationSchema: toTypedSchema(loginSchema),
+    validationSchema: toTypedSchema(forgotPasswordSchema),
 });
 const [email, emailAttrs] = defineField("email");
-const [password, passwordAttrs] = defineField("password");
 
 const onSubmit = handleSubmit(async (values) => {
     try {
-        await login({ email: values.email, password: values.password });
-        const redirect = route.query.redirect as string;
-        router.push(redirect || '/');
+        const resetUrl = `${window.location.origin}/reset-password`;
+        await forgotPassword(values.email, resetUrl);
     } catch (e) {
-        console.error('Login failed', e);
+        console.error('Forgot password failed', e);
     }
 });
 </script>
@@ -39,6 +31,9 @@ const onSubmit = handleSubmit(async (values) => {
 <template>
     <div class="w-[50%] h-[50%]">
         <form @submit.prevent="onSubmit" class="form-container">
+            <div v-if="successMessage" class="mb-4 p-3 bg-green-100 text-green-700 rounded">
+                {{ successMessage }}
+            </div>
             <div v-if="error" class="mb-4 p-3 bg-red-100 text-red-700 rounded">
                 {{ error }}
             </div>
@@ -53,24 +48,11 @@ const onSubmit = handleSubmit(async (values) => {
                 </IconField>
                 <div class="font-bold text-red-600">{{ errors.email }}</div>
             </div>
-            <div>
-                <label for="description" class="block mb-3 font-bold">{{
-                    $t("login.password")
-                    }}</label>
-                <IconField>
-                    <InputIcon class="pi pi-key" />
-                    <Password id="password" type="password" :placeholder="$t('login.password')" v-model="password"
-                        v-bind="passwordAttrs" toggle-mask :feedback="true" autocomplete="off" fluid />
-                </IconField>
-                <div v-if="errors.password" class="font-bold text-red-600">
-                    {{ errors.password }}
-                </div>
-            </div>
             <Button :disabled="isLoading" type="submit" severity="secondary"
                 :label="isLoading ? 'Loading...' : 'Login'" />
             <div class="mt-4 text-center">
-                <router-link to="/forgot-password" class="text-blue-600 hover:underline">
-                    {{ $t('login.forgotPassword') }}
+                <router-link to="/login" class="text-blue-600 hover:underline">
+                    {{ $t('forgotPassword.backToLogin') }}
                 </router-link>
             </div>
         </form>

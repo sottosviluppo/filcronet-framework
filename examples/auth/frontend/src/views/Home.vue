@@ -5,8 +5,10 @@ const { user, logout } = useAuth();
 </script>
 
 <template>
-    <div>
-        <p>Welcome, {{ user?.email }}</p>
-        <button @click="logout">Logout</button>
+    <div class="w-[50%] h-[50%]">
+        <div>
+            <p>Welcome, {{ user?.email }}</p>
+            <Button @click="logout">Logout</Button>
+        </div>
     </div>
 </template>

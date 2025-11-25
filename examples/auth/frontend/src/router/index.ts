@@ -10,6 +10,16 @@ const router = createRouter({
       beforeEnter: guestOnly,
     },
     {
+      path: "/forgot-password",
+      component: () => import("@/views/ForgotPassword.vue"),
+      beforeEnter: guestOnly,
+    },
+    {
+      path: "/reset-password",
+      component: () => import("@/views/ResetPassword.vue"),
+      beforeEnter: guestOnly,
+    },
+    {
       path: "/",
       component: () => import("@/views/Home.vue"),
       beforeEnter: requireAuth,

@@ -53,6 +53,7 @@ export interface IPasswordResetMessages {
  */
 export interface IForgotPasswordMessages {
   email: {
+    required: string;
     invalid: string;
   };
 }
@@ -154,6 +155,9 @@ export function createResetPasswordSchema(
  */
 export function createForgotPasswordSchema(messages: IForgotPasswordMessages) {
   return z.object({
-    email: z.string().email(messages.email.invalid),
+    email: z
+      .string()
+      .min(1, messages.email.required)
+      .email(messages.email.invalid),
   });
 }
