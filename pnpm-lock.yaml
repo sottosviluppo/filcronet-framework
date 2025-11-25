@@ -96,16 +96,16 @@ importers:
       '@sottosviluppo/frontend-core':
         specifier: workspace:*
         version: link:../frontend-core
+      axios:
+        specifier: ^1.13.2
+        version: 1.13.2
       zod:
-        specifier: ^4.1.12
-        version: 4.1.12
+        specifier: ^3.25.76
+        version: 3.25.76
     devDependencies:
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
-      axios:
-        specifier: ^1.13.2
-        version: 1.13.2
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.9.3)(vue@3.5.24(typescript@5.9.3))
@@ -127,9 +127,6 @@ importers:
 
   packages/frontend-core:
     dependencies:
-      '@sottosviluppo/core':
-        specifier: workspace:*
-        version: link:../core
       axios:
         specifier: ^1.13.2
         version: 1.13.2
@@ -1288,8 +1285,8 @@ packages:
     resolution: {integrity: sha512-7dSzzRQ++CKnNI/krKnYRV7JKKPUXMEh61soaHKg9mrWEhzFWhFnxPxGl+69cD1Ou63C13NUPCnmIcrvqCuM6w==}
     engines: {node: '>=12'}
 
-  zod@4.1.12:
-    resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
 snapshots:
 
@@ -2437,4 +2434,4 @@ snapshots:
       y18n: 5.0.8
       yargs-parser: 21.1.1
 
-  zod@4.1.12: {}
+  zod@3.25.76: {}

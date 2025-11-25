@@ -1,4 +1,13 @@
 export default {
+  // Login page
+  login: {
+    email: "Email",
+    password: "Password",
+    submit: "Accedi",
+    loading: "Caricamento...",
+  },
+
+  // Validation messages
   validation: {
     email: {
       invalid: "Indirizzo email non valido",

@@ -1,8 +1,7 @@
-import { Module } from '@nestjs/common';
-import { FilcronetAuthModule } from '@sottosviluppo/auth-backend';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { PermissionAction } from '@sottosviluppo/core';
 import { MailerModule } from '@nestjs-modules/mailer';
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { FilcronetAuthModule } from '@sottosviluppo/auth-backend';
 import { EmailModule } from './email.module';
 
 @Module({
@@ -15,7 +14,7 @@ import { EmailModule } from './email.module';
       password: 'password',
       database: 'mydb',
       autoLoadEntities: true,
-      synchronize: true, // Only in development
+      synchronize: true,
     }),
     MailerModule.forRoot({
       transport: {
@@ -31,32 +30,25 @@ import { EmailModule } from './email.module';
     EmailModule,
     FilcronetAuthModule.forRoot({
       jwt: {
-        secret: 'dn874fb3847fb4384f7b3',
-        expiresIn: '15m', // Access token expiration
-        refreshExpiresIn: '7d', // Refresh token expiration
+        secret:
+          process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+        expiresIn: '15m',
+        refreshExpiresIn: '7d',
       },
       passwordReset: {
-        expiresIn: '10m', // Password reset token expiration
+        expiresIn: '15m',
       },
       invitation: {
-        expiresIn: '7d', // New user set password token expiration
+        expiresIn: '7d',
       },
+      defaultUserRole: 'user',
       resources: [
-        {
-          name: 'products',
-          description: 'Product catalog',
-          actions: [
-            PermissionAction.CREATE,
-            PermissionAction.DELETE,
-            PermissionAction.READ,
-          ], // Optional: limit actions
-        },
-        {
-          name: 'orders',
-          description: 'Order management',
-        },
+        { name: 'products', description: 'Product catalog management' },
+        { name: 'orders', description: 'Order processing and tracking' },
       ],
     }),
   ],
+  controllers: [],
+  providers: [],
 })
 export class AppModule {}

@@ -61,7 +61,7 @@ export const passwordWithContextSchema = (userContext: {
  * @constant loginSchema
  */
 export const loginSchema = z.object({
-  email: z.email("Invalid email address"),
+  email: z.string().email("Invalid email address"),
   password: z.string().min(1, "Password is required"),
 });
 
@@ -73,7 +73,7 @@ export const loginSchema = z.object({
  */
 export const registerSchema = z
   .object({
-    email: z.email("Invalid email address"),
+    email: z.string().email("Invalid email address"),
     username: z
       .string()
       .regex(
@@ -124,7 +124,7 @@ export function createRegisterSchema(userContext: {
 }) {
   return z
     .object({
-      email: z.email("Invalid email address"),
+      email: z.string().email("Invalid email address"),
       username: z
         .string()
         .regex(
@@ -184,5 +184,5 @@ export const setPasswordSchema = z
  * @constant forgotPasswordSchema
  */
 export const forgotPasswordSchema = z.object({
-  email: z.email("Invalid email address"),
+  email: z.string().email("Invalid email address"),
 });

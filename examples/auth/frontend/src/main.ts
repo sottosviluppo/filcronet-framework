@@ -3,20 +3,19 @@ import { createPinia } from "pinia";
 
 import App from "./App.vue";
 import router from "./router";
-import { useAuthStore } from "@sottosviluppo/auth-frontend";
-import { PrimeVue } from "@primevue/core";
-import "./style.css";
-import it from "./locales/it";
+import { createAuth } from "@sottosviluppo/auth-frontend";
+import PrimeVue from "primevue/config";
+
+import "./tailwind.css";
 import { createI18n } from "vue-i18n";
+import it from "./locales/it";
 
 const app = createApp(App);
 
 app.use(createPinia());
-app.use(router);
-
 const i18n = createI18n({
-  legacy: false, // Use Composition API
-  locale: "it", // Default locale
+  legacy: false,
+  locale: "it",
   fallbackLocale: "it",
   messages: {
     it,
@@ -24,16 +23,17 @@ const i18n = createI18n({
 });
 
 app.use(i18n);
-
+app.use(router);
+app.use(
+  createAuth({
+    apiBaseUrl: "http://localhost:3000",
+    apiVersion: "v1",
+    redirectOnUnauth: "/login",
+    redirectOnLogin: "/",
+    autoRefreshToken: true,
+    refreshBeforeExpiry: 60000,
+  })
+);
 app.use(PrimeVue);
-
-const authStore = useAuthStore();
-authStore.initialize({
-  apiBaseUrl: "http://localhost:3000",
-  apiVersion: "v1",
-  storage: "localStorage",
-  redirectOnUnauth: "/login",
-  redirectOnLogin: "/",
-});
 
 app.mount("#app");

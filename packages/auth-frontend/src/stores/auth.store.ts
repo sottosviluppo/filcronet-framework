@@ -8,7 +8,6 @@ import {
   type RegisterData,
 } from "../api";
 import { IUser } from "@sottosviluppo/core";
-import { AxiosHttpClient } from "@sottosviluppo/frontend-core";
 import { ITokenStorage } from "../interfaces/token-storage.interface";
 import { TokenRefreshScheduler } from "../utils";
 import { MemoryTokenStorage } from "../storage/memory-token-storage";
@@ -39,6 +38,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   const isAuthenticated = ref<boolean>(false);
   const isLoading = ref<boolean>(false);
   const error = ref<string | null>(null);
+  const isInitialized = ref<boolean>(false);
 
   // ===== PRIVATE INSTANCES =====
   let httpClient: IAuthHttpClient;
@@ -46,6 +46,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   let authApi: AuthApi;
   let tokenScheduler: TokenRefreshScheduler | null = null;
   let config: AuthConfig;
+  let initPromise: Promise<boolean> | null = null;
 
   // ===== COMPUTED =====
 
@@ -148,7 +149,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
       }
     });
 
-    // Restore session if token exists
+    // Restore session if token exists in memory (SPA navigation)
     const savedToken = storage.getToken();
     const savedUser = storage.getUser<IUser>();
 
@@ -161,7 +162,62 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
       if (config.autoRefreshToken !== false) {
         setupTokenRefresh(savedToken);
       }
+
+      isInitialized.value = true;
     }
+  }
+
+  /**
+   * Restore session from HttpOnly refresh token cookie
+   * Call this on app startup to check if user has a valid session
+   *
+   * @returns {Promise<boolean>} True if session was restored
+   * @memberof useAuthStore
+   */
+  async function restoreSession(): Promise<boolean> {
+    // Already authenticated (from memory storage)
+    if (isAuthenticated.value) {
+      isInitialized.value = true;
+      return true;
+    }
+
+    try {
+      // Try to refresh token using HttpOnly cookie
+      const response = await authApi.refreshToken();
+
+      user.value = response.user;
+      isAuthenticated.value = true;
+
+      if (config.autoRefreshToken !== false) {
+        setupTokenRefresh(response.accessToken);
+      }
+
+      isInitialized.value = true;
+      return true;
+    } catch {
+      // No valid session - this is expected for non-authenticated users
+      clearAuthState();
+      isInitialized.value = true;
+      return false;
+    }
+  }
+
+  /**
+   * Wait for initialization to complete
+   * Ensures restoreSession is called only once even if called multiple times
+   *
+   * @returns {Promise<void>}
+   * @memberof useAuthStore
+   */
+  async function waitForInit(): Promise<void> {
+    if (isInitialized.value) return;
+
+    // Prevent multiple concurrent restoreSession calls
+    if (!initPromise) {
+      initPromise = restoreSession();
+    }
+
+    await initPromise;
   }
 
   /**
@@ -390,6 +446,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
     isAuthenticated,
     isLoading,
     error,
+    isInitialized,
 
     // Computed
     userName,
@@ -399,6 +456,8 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
     // Actions
     initialize,
+    restoreSession,
+    waitForInit,
     register,
     login,
     logout,

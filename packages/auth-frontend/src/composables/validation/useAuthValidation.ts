@@ -1,63 +1,45 @@
-import { computed } from "vue";
 import {
-  createValidationSchemas,
-  SchemaFactoryConfig,
+  createLoginSchema,
+  createRegisterSchema,
+  createResetPasswordSchema,
+  createForgotPasswordSchema,
+  type ILoginMessages,
+  type IRegisterMessages,
+  type IPasswordResetMessages,
+  type IForgotPasswordMessages,
 } from "../../schemas/schema-factory";
+import type { IPasswordErrorMessages } from "@sottosviluppo/core";
 
 /**
- * Composable for validation schemas with reactive i18n message updates
- *
- * **REQUIRED**: You must provide i18n translations for all validation messages.
- *
- * @param {() => SchemaFactoryConfig} getMessages - Function that returns current validation messages
- * @returns Validation schemas that update automatically when locale changes
- *
- * @example
- * ```vue
- * <script setup>
- * import { useI18n } from 'vue-i18n';
- * import { useAuthValidation } from '@filcronet/auth-frontend';
- * import { PasswordErrorKey } from '@filcronet/core';
- *
- * const { t } = useI18n();
- *
- * const { loginSchema, registerSchema } = useAuthValidation(() => ({
- *   messages: {
- *     email: {
- *       invalid: t('validation.email.invalid'),
- *       required: t('validation.email.required'),
- *     },
- *     password: {
- *       required: t('validation.password.required'),
- *       minLength: t('validation.password.minLength'),
- *       notStrong: t('validation.password.notStrong'),
- *       containsPersonalData: t('validation.password.containsPersonalData'),
- *       mismatch: t('validation.password.mismatch'),
- *     },
- *     username: {
- *       invalid: t('validation.username.invalid'),
- *     },
- *     token: {
- *       required: t('validation.token.required'),
- *     },
- *   },
- *   passwordMessages: {
- *     [PasswordErrorKey.TooShort]: t('validation.password.tooShort'),
- *     [PasswordErrorKey.NoUppercase]: t('validation.password.noUppercase'),
- *     [PasswordErrorKey.NoLowercase]: t('validation.password.noLowercase'),
- *     [PasswordErrorKey.NoNumber]: t('validation.password.noNumber'),
- *     [PasswordErrorKey.NoSpecialChar]: t('validation.password.noSpecialChar'),
- *     [PasswordErrorKey.ContainsPersonalData]: t('validation.password.containsPersonalData'),
- *     [PasswordErrorKey.CommonPassword]: t('validation.password.commonPassword'),
- *   },
- * }));
- * </script>
- * ```
+ * Create login validation schema
  */
-export function useAuthValidation(getMessages: () => SchemaFactoryConfig) {
-  const schemas = computed(() => createValidationSchemas(getMessages()));
+export function useLoginValidation(messages: ILoginMessages) {
+  return createLoginSchema(messages);
+}
 
-  return {
-    ...schemas.value,
-  };
+/**
+ * Create register validation schema
+ */
+export function useRegisterValidation(
+  messages: IRegisterMessages,
+  passwordMessages: IPasswordErrorMessages
+) {
+  return createRegisterSchema(messages, passwordMessages);
+}
+
+/**
+ * Create reset password validation schema
+ */
+export function useResetPasswordValidation(
+  messages: IPasswordResetMessages,
+  passwordMessages: IPasswordErrorMessages
+) {
+  return createResetPasswordSchema(messages, passwordMessages);
+}
+
+/**
+ * Create forgot password validation schema
+ */
+export function useForgotPasswordValidation(messages: IForgotPasswordMessages) {
+  return createForgotPasswordSchema(messages);
 }

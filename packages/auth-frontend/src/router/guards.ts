@@ -3,6 +3,18 @@ import { useAuthStore } from "../stores";
 import type { PermissionString } from "../composables/permissions/usePermissions";
 
 /**
+ * Helper to ensure auth store is initialized
+ * Waits for session restoration from HttpOnly cookie
+ *
+ * @private
+ * @returns {Promise<void>}
+ */
+async function ensureInitialized(): Promise<void> {
+  const authStore = useAuthStore();
+  await authStore.waitForInit();
+}
+
+/**
  * Navigation guard that requires authentication
  * Redirects to login if user is not authenticated
  *
@@ -21,11 +33,13 @@ import type { PermissionString } from "../composables/permissions/usePermissions
  * }
  * ```
  */
-export function requireAuth(
+export async function requireAuth(
   to: RouteLocationNormalized,
   from: RouteLocationNormalized,
   next: NavigationGuardNext
 ) {
+  await ensureInitialized();
+
   const authStore = useAuthStore();
 
   if (!authStore.isAuthenticated) {
@@ -62,11 +76,13 @@ export function requireAuth(
  * ```
  */
 export function requirePermissions(requiredPermissions: PermissionString[]) {
-  return (
+  return async (
     to: RouteLocationNormalized,
     from: RouteLocationNormalized,
     next: NavigationGuardNext
   ) => {
+    await ensureInitialized();
+
     const authStore = useAuthStore();
 
     if (!authStore.isAuthenticated) {
@@ -109,11 +125,13 @@ export function requirePermissions(requiredPermissions: PermissionString[]) {
  * ```
  */
 export function requireAnyPermission(permissions: PermissionString[]) {
-  return (
+  return async (
     to: RouteLocationNormalized,
     from: RouteLocationNormalized,
     next: NavigationGuardNext
   ) => {
+    await ensureInitialized();
+
     const authStore = useAuthStore();
 
     if (!authStore.isAuthenticated) {
@@ -155,11 +173,13 @@ export function requireAnyPermission(permissions: PermissionString[]) {
  * ```
  */
 export function requireRole(roleNames: string[]) {
-  return (
+  return async (
     to: RouteLocationNormalized,
     from: RouteLocationNormalized,
     next: NavigationGuardNext
   ) => {
+    await ensureInitialized();
+
     const authStore = useAuthStore();
 
     if (!authStore.isAuthenticated) {
@@ -199,11 +219,13 @@ export function requireRole(roleNames: string[]) {
  * }
  * ```
  */
-export function guestOnly(
+export async function guestOnly(
   to: RouteLocationNormalized,
   from: RouteLocationNormalized,
   next: NavigationGuardNext
 ) {
+  await ensureInitialized();
+
   const authStore = useAuthStore();
 
   if (authStore.isAuthenticated) {

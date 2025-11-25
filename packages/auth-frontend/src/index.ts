@@ -23,9 +23,6 @@ export * from "./router";
 // Directives
 export * from "./directives";
 
-// Components
-export * from "./components";
-
 // Schemas
 export * from "./schemas";
 
