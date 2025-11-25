@@ -12,12 +12,12 @@ Internal monorepo framework for Filcronet custom software projects.
 
 ## 📦 Packages
 
-| Package | Version | Description |
-|---------|---------|-------------|
-| [`@sottosviluppo/core`](./packages/core) | ![npm](https://img.shields.io/badge/v0.1.3-blue) | Shared types, interfaces, enums and validators |
-| [`@sottosviluppo/frontend-core`](./packages/frontend-core) | ![npm](https://img.shields.io/badge/v0.1.0-blue) | Core utilities for Vue 3 (HTTP client, storage, JWT) |
-| [`@sottosviluppo/auth-backend`](./packages/auth-backend) | ![npm](https://img.shields.io/badge/v0.2.0-blue) | NestJS authentication module with RBAC |
-| [`@sottosviluppo/auth-frontend`](./packages/auth-frontend) | ![npm](https://img.shields.io/badge/v0.1.1-blue) | Vue 3 authentication composables with i18n support |
+| Package                                                    | Version                                          | Description                                          |
+| ---------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------------- |
+| [`@sottosviluppo/core`](./packages/core)                   | ![npm](https://img.shields.io/badge/v0.1.4-blue) | Shared types, interfaces, enums and validators       |
+| [`@sottosviluppo/frontend-core`](./packages/frontend-core) | ![npm](https://img.shields.io/badge/v0.1.1-blue) | Core utilities for Vue 3 (HTTP client, storage, JWT) |
+| [`@sottosviluppo/auth-backend`](./packages/auth-backend)   | ![npm](https://img.shields.io/badge/v0.2.1-blue) | NestJS authentication module with RBAC               |
+| [`@sottosviluppo/auth-frontend`](./packages/auth-frontend) | ![npm](https://img.shields.io/badge/v0.1.3-blue) | Vue 3 authentication composables with i18n support   |
 
 ## 🛠 Tech Stack
 
@@ -72,21 +72,25 @@ This framework is published to **GitHub Packages**, which requires authenticatio
 ### Step 2: Configure Authentication
 
 **Windows (CMD)**:
+
 ```cmd
 set GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 **Windows (PowerShell)**:
+
 ```powershell
 $env:GITHUB_TOKEN = "ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ```
 
 **Linux/Mac/Git Bash**:
+
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 **Make permanent** (add to your shell profile):
+
 ```bash
 # Linux/Mac - Add to ~/.bashrc or ~/.zshrc
 echo 'export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx' >> ~/.bashrc
@@ -98,6 +102,7 @@ source ~/.bashrc
 ### For Maintainers (Framework Development)
 
 #### 1. Clone Repository
+
 ```bash
 git clone https://github.com/sottosviluppo/filcronet-framework.git
 cd filcronet-framework
@@ -108,11 +113,13 @@ cd filcronet-framework
 Use **Environment Variable** method (Option A) with a token that has `write:packages` scope.
 
 #### 3. Install Dependencies
+
 ```bash
 pnpm install
 ```
 
 #### 4. Development Workflow
+
 ```bash
 # Build all packages
 pnpm build
@@ -128,6 +135,7 @@ pnpm test
 ```
 
 ## 📁 Project Structure
+
 ```
 filcronet-framework/
 ├── packages/
@@ -157,6 +165,7 @@ filcronet-framework/
 ## 🔧 Available Scripts
 
 ### Build & Development
+
 ```bash
 # Build all packages
 pnpm build
@@ -174,6 +183,7 @@ pnpm clean
 ### Version Management
 
 Bump package versions following [Semantic Versioning](https://semver.org/):
+
 ```bash
 # Bug fixes: 0.1.0 → 0.1.1
 pnpm version:patch
@@ -194,6 +204,7 @@ pnpm version:major
 | Breaking changes | MAJOR   | `major` | 0.1.0 → 1.0.0 | API changes, rename interfaces     |
 
 **Complete Workflow Example**:
+
 ```bash
 # 1. Make changes to code
 # 2. Bump version
@@ -219,6 +230,7 @@ git push --tags
 ### Prerequisites
 
 ✅ **GitHub Personal Access Token** with scopes:
+
 - `write:packages` - Required for publishing
 - `read:packages` - Required for installing dependencies
 - `repo` - Required if repository is private
@@ -228,6 +240,7 @@ git push --tags
 ### Publishing Workflow
 
 #### 1. Ensure Authentication
+
 ```bash
 # Set GitHub token
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx  # Linux/Mac
@@ -239,6 +252,7 @@ pnpm config set //npm.pkg.github.com/:_authToken $env:GITHUB_TOKEN  # Windows
 ```
 
 #### 2. Update Version
+
 ```bash
 # Choose appropriate version bump
 pnpm version:patch   # Bug fixes
@@ -247,11 +261,13 @@ pnpm version:major   # Breaking changes
 ```
 
 This will:
+
 - Update `package.json` version in all packages
 - Create a git commit with version bump
 - Create a git tag
 
 #### 3. Build Packages
+
 ```bash
 pnpm build
 ```
@@ -259,16 +275,19 @@ pnpm build
 Ensure all packages build without errors.
 
 #### 4. Publish to GitHub Packages
+
 ```bash
 pnpm publish:all
 ```
 
 This will publish all packages to:
+
 ```
 https://github.com/orgs/sottosviluppo/packages
 ```
 
 #### 5. Push to Repository
+
 ```bash
 git push
 git push --tags
@@ -279,7 +298,7 @@ git push --tags
 After publishing, verify packages are available:
 
 1. **GitHub Packages UI**: https://github.com/orgs/sottosviluppo/packages
-2. **Check package page**: 
+2. **Check package page**:
    - `@sottosviluppo/core`
    - `@sottosviluppo/auth-backend`
    - `@sottosviluppo/auth-frontend`
@@ -290,42 +309,51 @@ After publishing, verify packages are available:
 ### Installation Issues
 
 #### `401 Unauthorized` Error
+
 ```
 npm ERR! code E401
 npm ERR! 401 Unauthorized - GET https://npm.pkg.github.com/@sottosviluppo%2fcore
 ```
 
 **Solutions**:
+
 1. Verify your GitHub token has `read:packages` scope
 2. Check token is correctly set:
+
 ```bash
    echo $GITHUB_TOKEN  # Linux/Mac
    echo $env:GITHUB_TOKEN  # Windows PowerShell
 ```
+
 3. Verify `.npmrc` configuration:
+
 ```bash
    cat .npmrc  # Linux/Mac
    type .npmrc  # Windows
 ```
 
 #### `403 Forbidden` Error
+
 ```
 npm ERR! code E403
 npm ERR! 403 Forbidden
 ```
 
 **Solutions**:
+
 1. Verify you have access to `sottosviluppo` organization
 2. Ask organization admin to grant you package access
 3. Check if package visibility is set to private (requires organization membership)
 
 #### `404 Not Found` Error
+
 ```
 npm ERR! code E404
 npm ERR! 404 Not Found - GET https://npm.pkg.github.com/@sottosviluppo%2fcore
 ```
 
 **Solutions**:
+
 1. Verify package exists: https://github.com/orgs/sottosviluppo/packages
 2. Check package name spelling in `package.json`
 3. Ensure `@sottosviluppo:registry` is correctly configured
@@ -333,6 +361,7 @@ npm ERR! 404 Not Found - GET https://npm.pkg.github.com/@sottosviluppo%2fcore
 ### Build Issues
 
 #### TypeScript Errors
+
 ```bash
 # Clean and rebuild
 pnpm clean
@@ -341,6 +370,7 @@ pnpm build
 ```
 
 #### Dependency Issues
+
 ```bash
 # Remove node_modules and reinstall
 rm -rf node_modules  # Linux/Mac
@@ -350,6 +380,7 @@ pnpm install
 ```
 
 #### Watch Mode Not Working
+
 ```bash
 # Restart development mode
 pnpm clean
@@ -359,6 +390,7 @@ pnpm dev
 ### Publishing Issues
 
 #### Token Expired
+
 ```
 npm ERR! code E401
 npm ERR! 401 Unauthorized - PUT https://npm.pkg.github.com/@sottosviluppo/core
@@ -367,6 +399,7 @@ npm ERR! 401 Unauthorized - PUT https://npm.pkg.github.com/@sottosviluppo/core
 **Solution**: Generate new GitHub token with longer expiration.
 
 #### Permission Denied
+
 ```
 npm ERR! code E403
 npm ERR! 403 Forbidden - PUT https://npm.pkg.github.com/@sottosviluppo/core
@@ -428,6 +461,7 @@ This is an internal framework for Filcronet projects. Follow these guidelines:
 - ✅ **Test your changes** - Add tests for new features
 
 ### Git Workflow
+
 ```bash
 # Create feature branch
 git checkout -b feature/my-feature
@@ -466,4 +500,4 @@ Follow [Conventional Commits](https://www.conventionalcommits.org/):
 
 **Built with ❤️ by Filcronet Development Team**
 
-*For support, contact the framework maintainers.*
+_For support, contact the framework maintainers._
