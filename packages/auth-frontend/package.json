@@ -1,6 +1,6 @@
 {
   "name": "@sottosviluppo/auth-frontend",
-  "version": "0.1.11",
+  "version": "0.1.13",
   "description": "Authentication composables and utilities for Vue 3",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

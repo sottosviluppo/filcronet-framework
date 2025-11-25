@@ -104,12 +104,7 @@ export class TokenRefreshScheduler {
    */
   private async executeRefresh(): Promise<void> {
     try {
-      const newToken = await this.refreshCallback();
-
-      // Schedule next refresh with new token
-      if (newToken) {
-        this.schedule(newToken);
-      }
+      await this.refreshCallback();
     } catch (error) {
       console.error("[TokenRefreshScheduler] Token refresh failed:", error);
       // Don't reschedule on error - let the 401 handler deal with it

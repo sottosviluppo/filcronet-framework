@@ -5,6 +5,7 @@ import App from "./App.vue";
 import router from "./router";
 import { createAuth } from "@sottosviluppo/auth-frontend";
 import PrimeVue from "primevue/config";
+import Aura from "@primeuix/themes/aura";
 
 import "./tailwind.css";
 import { createI18n } from "vue-i18n";
@@ -34,6 +35,10 @@ app.use(
     refreshBeforeExpiry: 60000,
   })
 );
-app.use(PrimeVue);
+app.use(PrimeVue, {
+  theme: {
+    preset: Aura,
+  },
+});
 
 app.mount("#app");

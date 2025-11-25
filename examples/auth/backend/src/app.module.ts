@@ -32,7 +32,7 @@ import { EmailModule } from './email.module';
       jwt: {
         secret:
           process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-        expiresIn: '15m',
+        expiresIn: '1m',
         refreshExpiresIn: '7d',
       },
       passwordReset: {
