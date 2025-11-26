@@ -4,17 +4,13 @@
  *
  * This package provides:
  * - HTTP client interface and Axios implementation
- * - Token storage interface and memory implementation (XSS-safe)
- * - JWT decoding and token refresh scheduling utilities
+ * - Storage interface and memory implementation (XSS-safe)
  *
  * @packageDocumentation
  */
 
-// API - HTTP client
+// HTTP - HTTP client interface and implementation
 export * from "./http";
 
-// Storage - Token storage
+// Storage - Generic storage interface and implementations
 export * from "./storage";
-
-// JWT - JWT utilities
-export * from "./composables";

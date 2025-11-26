@@ -2,7 +2,38 @@
  * Filcronet Auth Backend Package
  * Complete authentication and authorization system for NestJS
  *
+ * This package provides:
+ * - JWT-based authentication with access and refresh tokens
+ * - Role-based access control (RBAC) with dynamic permissions
+ * - User, Role, and Permission management APIs
+ * - Password recovery and user invitation flows
+ * - GDPR-compliant password validation
+ * - Automatic bootstrap of system roles and permissions
+ *
  * @packageDocumentation
+ *
+ * @example
+ * ```typescript
+ * // app.module.ts
+ * import { FilcronetAuthModule } from '@sottosviluppo/auth-backend';
+ *
+ * @Module({
+ *   imports: [
+ *     FilcronetAuthModule.forRoot({
+ *       jwt: {
+ *         secret: process.env.JWT_SECRET,
+ *         expiresIn: '15m',
+ *         refreshExpiresIn: '7d',
+ *       },
+ *       resources: [
+ *         { name: 'products', description: 'Product management' },
+ *         { name: 'orders', description: 'Order processing' },
+ *       ],
+ *     }),
+ *   ],
+ * })
+ * export class AppModule {}
+ * ```
  */
 
 // Module
@@ -18,6 +49,7 @@ export * from "./services/auth.service";
 export * from "./services/user.service";
 export * from "./services/role.service";
 export * from "./services/permission.service";
+export * from "./services/password-recovery.service";
 export * from "./services/bootstrap.service";
 
 // Controllers
@@ -34,6 +66,9 @@ export * from "./dto/create-user.dto";
 export * from "./dto/update-user.dto";
 export * from "./dto/create-role.dto";
 export * from "./dto/update-role.dto";
+export * from "./dto/reset-password.dto";
+export * from "./dto/set-password.dto";
+export * from "./dto/forgot-password.dto";
 
 // Guards
 export * from "./guards/jwt-auth.guard";

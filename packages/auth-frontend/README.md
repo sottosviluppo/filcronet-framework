@@ -1,506 +1,654 @@
 # @sottosviluppo/auth-frontend
 
-Authentication composables, stores and utilities for Vue 3 applications with full i18n support and HttpOnly cookie security.
+Complete authentication solution for Vue 3 applications in the Filcronet Framework.
+
+Provides Pinia stores, composables, router guards, directives, and validation schemas for seamless authentication integration.
 
 ## Features
 
-- 🎣 **Vue 3 Composables** - Reactive authentication state
-- 🗄️ **Pinia Store** - Centralized state management
-- 🔒 **XSS-Safe Token Storage** - Access token in memory, refresh in HttpOnly cookie
-- 🔄 **Automatic Token Refresh** - With retry logic and scheduling
-- ✅ **Permission Checking** - Declarative API with directives
-- 🌐 **Full i18n Support** - Customizable validation messages
-- 🔑 **GDPR-Compliant Password** - Validation with strength meter
-- 📊 **Real-time Password Feedback** - Customizable error messages
-- 🛡️ **Router Guards** - Protect routes easily
-- 📝 **TypeScript Support** - Full type safety
+- 🔐 **Secure Token Storage**: XSS-safe in-memory storage for access tokens
+- 🔄 **Automatic Token Refresh**: Seamless token refresh before expiry
+- 🍪 **HttpOnly Cookies**: Refresh tokens stored securely in HttpOnly cookies
+- 🛡️ **Permission System**: Role-based and permission-based access control
+- 📝 **i18n-Ready Validation**: Zod schema factories with customizable messages
+- 🧭 **Router Guards**: Pre-built navigation guards for protected routes
+- 🎯 **Vue Directives**: `v-can` and `v-role` for conditional rendering
 
 ## Installation
 
 ```bash
-pnpm add @sottosviluppo/auth-frontend @sottosviluppo/core @sottosviluppo/frontend-core
+# Using pnpm (recommended)
+pnpm add @sottosviluppo/auth-frontend
+
+# Using npm
+npm install @sottosviluppo/auth-frontend
+
+# Using yarn
+yarn add @sottosviluppo/auth-frontend
+```
+
+### GitHub Packages Authentication
+
+Configure your `.npmrc`:
+
+```ini
+@sottosviluppo:registry=https://npm.pkg.github.com
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+### Peer Dependencies
+
+```bash
+pnpm add vue@^3.5.0 pinia@^3.0.0 vue-router@^4.6.0
 ```
 
 ## Quick Start
 
-### 1. Install Plugin
+### 1. Install the Plugin
 
 ```typescript
 // main.ts
-import { createApp } from 'vue';
-import { createPinia } from 'pinia';
-import { createAuth } from '@sottosviluppo/auth-frontend';
-import App from './App.vue';
+import { createApp } from "vue";
+import { createPinia } from "pinia";
+import { createAuth } from "@sottosviluppo/auth-frontend";
+import App from "./App.vue";
 
 const app = createApp(App);
+const pinia = createPinia();
 
-app.use(createPinia());
-app.use(createAuth({
-  apiBaseUrl: 'http://localhost:3000',
-  apiVersion: 'v1',
-  redirectOnUnauth: '/login',
-  redirectOnLogin: '/dashboard',
-  autoRefreshToken: true,
-  refreshBeforeExpiry: 60000, // 1 minute
-}));
+// Install Pinia first (required)
+app.use(pinia);
 
-app.mount('#app');
+// Install auth plugin
+app.use(
+  createAuth({
+    apiBaseUrl: import.meta.env.VITE_API_URL, // e.g., 'http://localhost:3000'
+    apiVersion: "v1",
+    redirectOnUnauth: "/login",
+    redirectOnLogin: "/dashboard",
+    redirectOnForbidden: "/forbidden",
+    autoRefreshToken: true,
+    refreshBeforeExpiry: 60000, // 1 minute before expiry
+  })
+);
+
+app.mount("#app");
 ```
 
-### 2. Use in Components
+### 2. Restore Session on App Load
+
+```vue
+<!-- App.vue -->
+<script setup lang="ts">
+import { onMounted, ref } from "vue";
+import { useAuthStore } from "@sottosviluppo/auth-frontend";
+
+const authStore = useAuthStore();
+const isReady = ref(false);
+
+onMounted(async () => {
+  // Restore session from HttpOnly cookie
+  await authStore.restoreSession();
+  isReady.value = true;
+});
+</script>
+
+<template>
+  <div v-if="isReady">
+    <router-view />
+  </div>
+  <div v-else>Loading...</div>
+</template>
+```
+
+### 3. Use in Components
 
 ```vue
 <script setup lang="ts">
-import { useAuth, usePermissions } from '@sottosviluppo/auth-frontend';
+import { useAuth, usePermissions } from "@sottosviluppo/auth-frontend";
 
 const { user, isAuthenticated, login, logout, isLoading, error } = useAuth();
-const { can, hasRole } = usePermissions();
+const { can, canAny } = usePermissions();
 
 async function handleLogin() {
   try {
-    await login({ email: 'user@example.com', password: 'password' });
-  } catch (e) {
-    console.error('Login failed');
+    await login({
+      email: "user@example.com",
+      password: "password123",
+    });
+    // Redirect happens automatically if configured
+  } catch (err) {
+    console.error("Login failed:", err.message);
   }
 }
 </script>
 
 <template>
-  <div v-if="!isAuthenticated">
+  <div v-if="isAuthenticated">
+    <p>Welcome, {{ user?.email }}</p>
+
+    <button v-if="can('users:create')" @click="createUser">Create User</button>
+
+    <button @click="logout">Logout</button>
+  </div>
+
+  <div v-else>
     <button @click="handleLogin" :disabled="isLoading">
-      {{ isLoading ? 'Loading...' : 'Login' }}
+      {{ isLoading ? "Loading..." : "Login" }}
     </button>
     <p v-if="error" class="error">{{ error }}</p>
-  </div>
-  
-  <div v-else>
-    <p>Welcome, {{ user?.email }}</p>
-    <button v-if="can('users:create')" @click="createUser">Create User</button>
-    <button @click="logout">Logout</button>
   </div>
 </template>
 ```
 
-## 🔒 Security Architecture
+## Configuration Options
 
-### Token Storage Strategy
-
-| Token Type | Storage | Accessible by JS | Lifetime | Purpose |
-|-----------|---------|------------------|----------|---------|
-| **Access Token** | Memory | ✅ Yes | 15 min | API authentication |
-| **Refresh Token** | HttpOnly Cookie | ❌ No | 7 days | Renew access token |
-
-### Why This Approach?
-
-```typescript
-// ❌ VULNERABLE TO XSS
-localStorage.setItem('token', accessToken);
-
-// ✅ XSS-SAFE (our approach)
-// Access token: memory only (lost on refresh, restored automatically)
-// Refresh token: HttpOnly cookie (JavaScript cannot access)
-```
-
-### Security Flow
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ 1. Login → Backend sets refresh token in HttpOnly       │
-│            Frontend stores access token in memory       │
-├─────────────────────────────────────────────────────────┤
-│ 2. API Call → Access token from memory in header        │
-│               If 401, automatic refresh using cookie    │
-├─────────────────────────────────────────────────────────┤
-│ 3. Page Refresh → Access token lost (expected!)         │
-│                   Auto-refresh restores it immediately  │
-└─────────────────────────────────────────────────────────┘
-```
-
-## Configuration
-
-```typescript
-interface AuthConfig {
-  apiBaseUrl: string;           // API base URL (required)
-  apiVersion: string;           // API version, e.g., 'v1' (required)
-  httpClient?: IAuthHttpClient; // Custom HTTP client
-  storage?: ITokenStorage;      // Custom storage (default: MemoryTokenStorage)
-  redirectOnUnauth?: string;    // Redirect on 401 (default: '/login')
-  redirectOnLogin?: string;     // Redirect after login (default: '/')
-  autoRefreshToken?: boolean;   // Auto-refresh before expiry (default: true)
-  refreshBeforeExpiry?: number; // Refresh X ms before expiry (default: 60000)
-}
-```
+| Option                | Type              | Default          | Description                               |
+| --------------------- | ----------------- | ---------------- | ----------------------------------------- |
+| `apiBaseUrl`          | `string`          | **required**     | Backend API base URL                      |
+| `apiVersion`          | `string`          | **required**     | API version prefix (e.g., 'v1')           |
+| `redirectOnUnauth`    | `string`          | `'/login'`       | Redirect path when not authenticated      |
+| `redirectOnLogin`     | `string`          | `'/'`            | Redirect path after login                 |
+| `redirectOnForbidden` | `string`          | `'/forbidden'`   | Redirect path when lacking permissions    |
+| `autoRefreshToken`    | `boolean`         | `true`           | Automatically refresh token before expiry |
+| `refreshBeforeExpiry` | `number`          | `60000`          | Refresh token X ms before expiry          |
+| `httpClient`          | `IAuthHttpClient` | `AuthHttpClient` | Custom HTTP client                        |
+| `storage`             | `ITokenStorage`   | `TokenStorage`   | Custom token storage                      |
 
 ## Composables
 
-### useAuth()
+### useAuth
 
-Main authentication composable.
+Main authentication composable:
 
 ```typescript
+import { useAuth } from "@sottosviluppo/auth-frontend";
+
 const {
-  // State
-  user,              // Ref<IUser | null>
-  isAuthenticated,   // Ref<boolean>
-  isLoading,         // Ref<boolean>
-  error,             // Ref<string | null>
-  
-  // Computed
-  userName,          // Computed<string | null>
-  userInitials,      // Computed<string | null>
-  
-  // Actions
-  login,             // (credentials: LoginCredentials) => Promise<IUser>
-  register,          // (data: RegisterData) => Promise<IUser>
-  logout,            // () => Promise<void>
-  refreshToken,      // () => Promise<void>
-  clearError,        // () => void
+  // State (reactive)
+  user, // Current user or null
+  isAuthenticated, // Boolean
+  isLoading, // Loading state
+  error, // Error message or null
+  userName, // Display name
+  userInitials, // For avatars
+  userPermissions, // Array of 'resource:action'
+  userRoles, // Array of role names
+
+  // Methods
+  login, // (credentials) => Promise<IUser>
+  logout, // () => Promise<void>
+  register, // (data) => Promise<IUser>
+  fetchCurrentUser, // () => Promise<IUser>
+  refreshToken, // () => Promise<void>
+  clearError, // () => void
 } = useAuth();
 ```
 
-### usePermissions()
+### useUser
 
-Permission checking utilities.
-
-```typescript
-const {
-  permissions,       // Computed<string[]>
-  roles,             // Computed<string[]>
-  can,               // (permission: string) => boolean
-  canAll,            // (permissions: string[]) => boolean
-  canAny,            // (permissions: string[]) => boolean
-  hasRole,           // (role: string) => boolean
-  hasAnyRole,        // (roles: string[]) => boolean
-} = usePermissions();
-
-// Usage
-if (can('users:create')) {
-  // User can create users
-}
-
-if (canAny(['users:update', 'users:delete'])) {
-  // User can update OR delete
-}
-```
-
-### useUser()
-
-User utilities.
+User-specific utilities:
 
 ```typescript
+import { useUser } from "@sottosviluppo/auth-frontend";
+
 const {
   user,
-  userName,
-  userInitials,
-  isAuthenticated,
-  fetchCurrentUser,
+  fullName, // 'John Doe'
+  displayName, // 'John' or username or email
+  email,
+  hasVerifiedEmail,
+  status,
+  isActive,
+  isSuspended,
+  isPendingVerification,
+  roles,
+  roleNames,
+
+  // Methods
+  hasRole, // (roleName) => boolean
+  hasAnyRole, // (roleNames[]) => boolean
+  hasAllRoles, // (roleNames[]) => boolean
 } = useUser();
 ```
 
-### usePasswordStrength()
+### usePermissions
 
-Password strength validation.
+Permission checking:
 
 ```typescript
-import { usePasswordStrength } from '@sottosviluppo/auth-frontend';
-import { PasswordErrorKey } from '@sottosviluppo/core';
+import { usePermissions } from "@sottosviluppo/auth-frontend";
 
-const password = ref('');
-const { strength, errors, isValid } = usePasswordStrength(password, {
-  minLength: 12,
-  personalData: ['john', 'doe', 'john@example.com'],
-});
+const {
+  permissions, // All user permissions
 
-// Custom error messages (i18n)
-const errorMessages = {
-  [PasswordErrorKey.TooShort]: t('validation.password.tooShort'),
-  [PasswordErrorKey.NoUppercase]: t('validation.password.noUppercase'),
-  // ...
-};
+  // Methods
+  can, // (permission) => boolean
+  canAny, // (permissions[]) => boolean
+  canAll, // (permissions[]) => boolean
+  canManage, // (resource) => boolean
+} = usePermissions();
+
+// Examples
+if (can("users:create")) {
+  // User can create users
+}
+
+if (canAny(["users:update", "users:delete"])) {
+  // User can update OR delete users
+}
+
+if (canAll(["products:create", "products:update"])) {
+  // User can create AND update products
+}
+
+if (canManage("orders")) {
+  // User has 'orders:manage' permission
+}
 ```
 
-### usePasswordRecovery()
+### usePasswordRecovery
 
-Password recovery flow.
+Password reset flows:
 
 ```typescript
+import { usePasswordRecovery } from "@sottosviluppo/auth-frontend";
+
 const {
-  requestPasswordReset,  // (email: string) => Promise<void>
-  resetPassword,         // (token: string, newPassword: string) => Promise<void>
   isLoading,
   error,
+  successMessage,
+
+  forgotPassword, // (email, resetUrl) => Promise<void>
+  resetPassword, // (token, newPassword) => Promise<void>
+  setPassword, // (token, password) => Promise<void>
+  validateToken, // (token, type) => Promise<{ valid, email? }>
+  clearMessages,
 } = usePasswordRecovery();
+
+// Request password reset
+await forgotPassword("user@example.com", "https://app.com/reset-password");
+
+// Reset password with token
+await resetPassword(tokenFromUrl, newPassword);
+
+// Set password (invitation flow)
+await setPassword(invitationToken, password);
 ```
 
-### useAuthValidation()
+### usePasswordStrength
 
-i18n-ready validation schemas.
+Real-time password strength feedback:
 
 ```typescript
-const { schemas } = useAuthValidation({
-  messages: {
-    email: {
-      required: t('validation.email.required'),
-      invalid: t('validation.email.invalid'),
-    },
-    password: {
-      required: t('validation.password.required'),
-      tooShort: t('validation.password.tooShort'),
-    },
-  },
-});
+import { usePasswordStrength } from "@sottosviluppo/auth-frontend";
+import { PasswordErrorKey } from "@sottosviluppo/core";
 
-// Use with VeeValidate or Zod
-const { errors } = useForm({
-  validationSchema: toTypedSchema(schemas.login),
-});
+const password = ref("");
+
+const {
+  strength, // 0-4
+  strengthLabel, // 'Weak', 'Fair', 'Good', 'Strong'
+  strengthColor, // CSS color
+  errors, // Array of error messages
+  isValid, // boolean
+  progressValue, // 0-100 for progress bars
+} = usePasswordStrength(
+  password,
+  { email, username, firstName, lastName }, // Optional user context
+  {
+    errorMessages: {
+      [PasswordErrorKey.TooShort]: "Password must be at least 12 characters",
+      [PasswordErrorKey.NoUppercase]: "Add an uppercase letter",
+      // ... other messages
+    },
+  }
+);
+```
+
+### useUserManagement
+
+Admin user CRUD:
+
+```typescript
+import { useUserManagement } from "@sottosviluppo/auth-frontend";
+
+const {
+  users,
+  isLoading,
+  error,
+  pagination,
+
+  fetchUsers, // (params?) => Promise<void>
+  getUser, // (userId) => Promise<IUser>
+  createUser, // (data) => Promise<CreateUserResponse>
+  updateUser, // (userId, data) => Promise<IUser>
+  deleteUser, // (userId) => Promise<void>
+  clearError,
+} = useUserManagement();
+
+// Initialize with HTTP client
+const authStore = useAuthStore();
+const userManagement = useUserManagementStore();
+userManagement.initialize(authStore.getHttpClient());
+```
+
+### useRoleManagement
+
+Admin role CRUD:
+
+```typescript
+import { useRoleManagement } from "@sottosviluppo/auth-frontend";
+
+const {
+  roles,
+  systemRoles, // Cannot be deleted
+  customRoles, // Can be modified/deleted
+  isLoading,
+  error,
+
+  fetchRoles,
+  getRole,
+  createRole,
+  updateRole,
+  deleteRole,
+  clearError,
+} = useRoleManagement();
 ```
 
 ## Router Guards
 
+### Basic Auth Guard
+
 ```typescript
-import { createRouter } from 'vue-router';
-import {
-  requireAuth,
-  requirePermissions,
-  requireAnyPermission,
-  requireRole,
-  guestOnly,
-} from '@sottosviluppo/auth-frontend';
+import { createRouter, createWebHistory } from "vue-router";
+import { requireAuth, guestOnly } from "@sottosviluppo/auth-frontend";
 
 const router = createRouter({
+  history: createWebHistory(),
   routes: [
     {
-      path: '/login',
+      path: "/login",
       component: LoginPage,
-      beforeEnter: guestOnly('/dashboard'),
+      beforeEnter: guestOnly, // Redirect to home if authenticated
     },
     {
-      path: '/dashboard',
+      path: "/dashboard",
       component: Dashboard,
-      beforeEnter: requireAuth(),
-    },
-    {
-      path: '/admin/users',
-      component: UserManagement,
-      beforeEnter: requirePermissions(['users:list', 'users:read']),
-    },
-    {
-      path: '/editor',
-      component: Editor,
-      beforeEnter: requireAnyPermission(['posts:create', 'pages:create']),
-    },
-    {
-      path: '/admin',
-      component: AdminPanel,
-      beforeEnter: requireRole('admin'),
+      beforeEnter: requireAuth, // Redirect to login if not authenticated
     },
   ],
 });
 ```
 
-## Directives
+### Permission Guards
+
+```typescript
+import {
+  requirePermissions,
+  requireAnyPermission,
+  requireRole,
+} from "@sottosviluppo/auth-frontend";
+
+const routes = [
+  {
+    path: "/admin/users",
+    component: UserManagement,
+    beforeEnter: requirePermissions(["users:list", "users:read"]),
+  },
+  {
+    path: "/content",
+    component: ContentEditor,
+    beforeEnter: requireAnyPermission(["posts:create", "posts:update"]),
+  },
+  {
+    path: "/admin",
+    component: AdminPanel,
+    beforeEnter: requireRole(["admin", "super-admin"]),
+  },
+];
+```
+
+## Vue Directives
 
 ### v-can
 
-Permission-based rendering.
+Show/hide elements based on permissions:
 
 ```vue
 <template>
   <!-- Single permission -->
   <button v-can="'users:create'">Create User</button>
-  
-  <!-- Multiple permissions (AND) -->
+
+  <!-- ALL permissions required -->
   <button v-can="['users:update', 'users:delete']">Edit & Delete</button>
-  
-  <!-- Multiple permissions (OR) -->
+
+  <!-- ANY permission (with modifier) -->
   <button v-can:any="['users:update', 'users:delete']">Edit or Delete</button>
 </template>
 ```
 
 ### v-role
 
-Role-based rendering.
+Show/hide elements based on roles:
 
 ```vue
 <template>
   <!-- Single role -->
   <div v-role="'admin'">Admin Panel</div>
-  
-  <!-- Multiple roles (AND) -->
-  <div v-role="['admin', 'editor']">Admin + Editor</div>
-  
-  <!-- Multiple roles (OR) -->
-  <div v-role:any="['admin', 'editor']">Admin or Editor</div>
+
+  <!-- ALL roles required -->
+  <div v-role="['admin', 'editor']">Admin + Editor Content</div>
+
+  <!-- ANY role (with modifier) -->
+  <div v-role:any="['admin', 'editor']">Admin or Editor Content</div>
 </template>
 ```
 
-## Components
+## Validation Schemas
 
-### PasswordStrengthMeter
+i18n-ready Zod schema factories:
 
-```vue
-<script setup>
-import { ref } from 'vue';
-import { PasswordStrengthMeter } from '@sottosviluppo/auth-frontend';
-import { PasswordErrorKey } from '@sottosviluppo/core';
-
-const password = ref('');
-
-const errorMessages = {
-  [PasswordErrorKey.TooShort]: 'Password must be at least 12 characters',
-  [PasswordErrorKey.NoUppercase]: 'Add an uppercase letter',
-  [PasswordErrorKey.NoLowercase]: 'Add a lowercase letter',
-  [PasswordErrorKey.NoNumber]: 'Add a number',
-  [PasswordErrorKey.NoSpecialChar]: 'Add a special character',
-  [PasswordErrorKey.ContainsPersonalData]: 'Cannot contain personal info',
-  [PasswordErrorKey.CommonPassword]: 'Password is too common',
-};
-</script>
-
-<template>
-  <input v-model="password" type="password" />
-  
-  <PasswordStrengthMeter
-    v-model="password"
-    :error-messages="errorMessages"
-    :show-errors="true"
-    :show-label="true"
-  />
-</template>
-```
-
-## Admin Composables
-
-### useUserManagement()
+### Login Schema
 
 ```typescript
-const {
-  users,
-  isLoading,
-  error,
-  pagination,
-  fetchUsers,
-  getUser,
-  createUser,
-  updateUser,
-  deleteUser,
-} = useUserManagement();
+import { useLoginValidation } from "@sottosviluppo/auth-frontend";
+import { useI18n } from "vue-i18n";
 
-// Fetch paginated users
-await fetchUsers({ page: 1, limit: 20 });
+const { t } = useI18n();
 
-// Create user
-await createUser({
-  email: 'new@example.com',
-  firstName: 'John',
-  lastName: 'Doe',
-  roleIds: ['role-uuid'],
+const loginSchema = useLoginValidation({
+  email: {
+    invalid: t("validation.email.invalid"),
+    required: t("validation.email.required"),
+  },
+  password: {
+    required: t("validation.password.required"),
+  },
+});
+
+// Use with vee-validate
+import { useForm } from "vee-validate";
+import { toTypedSchema } from "@vee-validate/zod";
+
+const { handleSubmit } = useForm({
+  validationSchema: toTypedSchema(loginSchema),
 });
 ```
 
-### useRoleManagement()
+### Register Schema
 
 ```typescript
-const {
-  roles,
-  isLoading,
-  fetchRoles,
-  createRole,
-  updateRole,
-  deleteRole,
-} = useRoleManagement();
+import { useRegisterValidation } from "@sottosviluppo/auth-frontend";
+import { PasswordErrorKey } from "@sottosviluppo/core";
+
+const registerSchema = useRegisterValidation(
+  {
+    email: { invalid: t("validation.email.invalid") },
+    password: {
+      minLength: t("validation.password.minLength"),
+      notStrong: t("validation.password.notStrong"),
+      mismatch: t("validation.password.mismatch"),
+    },
+    username: { invalid: t("validation.username.invalid") },
+  },
+  {
+    [PasswordErrorKey.TooShort]: t("password.tooShort"),
+    [PasswordErrorKey.NoUppercase]: t("password.noUppercase"),
+    [PasswordErrorKey.NoLowercase]: t("password.noLowercase"),
+    [PasswordErrorKey.NoNumber]: t("password.noNumber"),
+    [PasswordErrorKey.NoSpecialChar]: t("password.noSpecialChar"),
+    [PasswordErrorKey.ContainsPersonalData]: t("password.containsPersonalData"),
+    [PasswordErrorKey.CommonPassword]: t("password.commonPassword"),
+  }
+);
 ```
 
-## Exports
+### Other Schemas
 
-### Interfaces
-- `ITokenStorage` - Token storage interface
-- `IAuthHttpClient` - Auth HTTP client interface
+```typescript
+import {
+  useForgotPasswordValidation,
+  useResetPasswordValidation,
+  useSetPasswordValidation,
+} from "@sottosviluppo/auth-frontend";
 
-### Classes
-- `MemoryTokenStorage` - In-memory token storage
-- `AuthHttpClient` - Axios client with auto-refresh
-- `TokenRefreshScheduler` - Token refresh scheduler
+// Forgot password (email only)
+const forgotSchema = useForgotPasswordValidation({
+  email: {
+    required: t("validation.email.required"),
+    invalid: t("validation.email.invalid"),
+  },
+});
 
-### Composables
-- `useAuth()` - Main authentication
-- `useUser()` - User utilities
-- `usePermissions()` - Permission checking
-- `usePasswordStrength()` - Password strength
-- `usePasswordRecovery()` - Password recovery
-- `useAuthValidation()` - i18n validation
-- `useUserManagement()` - Admin user CRUD
-- `useRoleManagement()` - Admin role CRUD
+// Reset password (with token)
+const resetSchema = useResetPasswordValidation(
+  {
+    token: { required: t("validation.token.required") },
+    password: {
+      /* ... */
+    },
+  },
+  passwordErrorMessages
+);
+
+// Set password (invitation flow)
+const setPasswordSchema = useSetPasswordValidation(
+  {
+    token: { required: t("validation.token.required") },
+    password: {
+      /* ... */
+    },
+  },
+  passwordErrorMessages
+);
+```
+
+## Security Architecture
+
+### Token Storage
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Browser                               │
+├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐    ┌─────────────────────────────────┐ │
+│  │  Memory Storage │    │     HttpOnly Cookie             │ │
+│  │  (JavaScript)   │    │     (Not accessible via JS)     │ │
+│  │                 │    │                                 │ │
+│  │  Access Token   │    │  Refresh Token                  │ │
+│  │  (short-lived)  │    │  (long-lived)                   │ │
+│  │                 │    │                                 │ │
+│  │  ✅ XSS Safe    │    │  ✅ XSS Safe                    │ │
+│  │  ❌ Lost on     │    │  ✅ Persists across             │ │
+│  │     refresh     │    │     page refreshes              │ │
+│  └─────────────────┘    └─────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Token Refresh Flow
+
+```
+┌──────────┐     ┌──────────┐     ┌──────────┐
+│  Client  │     │   API    │     │  Client  │
+└────┬─────┘     └────┬─────┘     └────┬─────┘
+     │                │                │
+     │  Request with  │                │
+     │  expired token │                │
+     │───────────────>│                │
+     │                │                │
+     │  401 Unauthorized               │
+     │<───────────────│                │
+     │                │                │
+     │  POST /auth/refresh             │
+     │  (HttpOnly cookie)              │
+     │───────────────>│                │
+     │                │                │
+     │  New access token               │
+     │<───────────────│                │
+     │                │                │
+     │  Retry original request         │
+     │───────────────>│                │
+     │                │                │
+     │  Success       │                │
+     │<───────────────│                │
+```
+
+## API Reference
 
 ### Stores
-- `useAuthStore()` - Pinia auth store
-- `useUserManagementStore()` - User management store
-- `useRoleManagementStore()` - Role management store
+
+| Store                    | Description                           |
+| ------------------------ | ------------------------------------- |
+| `useAuthStore`           | Main authentication state and methods |
+| `useUserManagementStore` | Admin user CRUD operations            |
+| `useRoleManagementStore` | Admin role CRUD operations            |
+
+### Composables
+
+| Composable                    | Description                      |
+| ----------------------------- | -------------------------------- |
+| `useAuth`                     | Authentication state and methods |
+| `useUser`                     | Current user utilities           |
+| `usePermissions`              | Permission checking              |
+| `usePasswordRecovery`         | Password reset flows             |
+| `usePasswordStrength`         | Password strength feedback       |
+| `useUserManagement`           | Admin user operations            |
+| `useRoleManagement`           | Admin role operations            |
+| `useLoginValidation`          | Login form schema                |
+| `useRegisterValidation`       | Registration form schema         |
+| `useForgotPasswordValidation` | Forgot password schema           |
+| `useResetPasswordValidation`  | Reset password schema            |
+| `useSetPasswordValidation`    | Set password schema              |
 
 ### Router Guards
-- `requireAuth` - Require authentication
-- `requirePermissions` - Require specific permissions
-- `requireAnyPermission` - Require any permission
-- `requireRole` - Require specific role
-- `guestOnly` - Guest-only routes
+
+| Guard                  | Description                        |
+| ---------------------- | ---------------------------------- |
+| `requireAuth`          | Requires authentication            |
+| `requirePermissions`   | Requires ALL specified permissions |
+| `requireAnyPermission` | Requires ANY specified permission  |
+| `requireRole`          | Requires ANY specified role        |
+| `guestOnly`            | Only for non-authenticated users   |
 
 ### Directives
-- `vCan` - Permission-based rendering
-- `vRole` - Role-based rendering
 
-### Components
-- `PasswordStrengthMeter` - Password strength component
+| Directive | Description             |
+| --------- | ----------------------- |
+| `v-can`   | Show/hide by permission |
+| `v-role`  | Show/hide by role       |
 
-### Utilities
-- `decodeJwt()` - Decode JWT token
-- `isTokenExpired()` - Check if token expired
-- `getTokenExpiryTime()` - Get time until expiry
-- `getTokenExpiryDate()` - Get expiry date
-- `isTokenExpiringSoon()` - Check if expiring soon
+### Classes
 
-### Re-exports from @sottosviluppo/core
-- `PasswordErrorKey`
-- `IValidationMessages`
-- `IPasswordErrorMessages`
-
-## Troubleshooting
-
-### Token Not Persisting Across Refreshes
-
-This is **expected behavior**:
-- Access token in memory → lost on refresh
-- Refresh token in cookie → persists
-- Auto-refresh restores access token immediately
-
-### 401 Errors After Refresh
-
-Check:
-1. Backend CORS allows credentials
-2. `withCredentials: true` in HTTP client
-3. Cookie domain/path settings
-4. Backend refresh endpoint works
-
-### Auto-Refresh Not Working
-
-```typescript
-// Ensure autoRefreshToken is enabled
-createAuth({
-  autoRefreshToken: true,
-  refreshBeforeExpiry: 60000,
-});
-```
-
-## Related Packages
-
-- **[@sottosviluppo/core](../core)** - Shared types and interfaces
-- **[@sottosviluppo/frontend-core](../frontend-core)** - Base HTTP client and storage
-- **[@sottosviluppo/auth-backend](../auth-backend)** - NestJS auth module
+| Class            | Description                   |
+| ---------------- | ----------------------------- |
+| `AuthHttpClient` | HTTP client with auto-refresh |
+| `TokenStorage`   | XSS-safe token storage        |
+| `AuthApi`        | Authentication API client     |
+| `UserApi`        | User management API client    |
+| `RoleApi`        | Role management API client    |
+| `PermissionApi`  | Permission API client         |
 
 ## License
 
 UNLICENSED - Private package for Filcronet projects.
-
----
-
-**Security First. Developer Experience Second.**

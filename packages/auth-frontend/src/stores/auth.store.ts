@@ -10,34 +10,65 @@ import {
 import { IUser } from "@sottosviluppo/core";
 import { ITokenStorage } from "../interfaces/token-storage.interface";
 import { TokenRefreshScheduler } from "../utils";
-import { MemoryTokenStorage } from "../storage/memory-token-storage";
+import { TokenStorage } from "../storage";
 import { IAuthHttpClient } from "../interfaces";
 
 /**
  * Authentication store
  * Manages authentication state, token refresh, and user data
  *
+ * Core responsibilities:
+ * - User authentication state (login, logout, register)
+ * - Token management with automatic refresh
+ * - Session restoration from HttpOnly cookies
+ * - User profile and permissions access
+ *
  * @export
  * @function useAuthStore
  *
  * @example
  * ```typescript
+ * // In main.ts - Initialize with plugin
+ * import { createAuth } from '@sottosviluppo/auth-frontend';
+ *
+ * app.use(createAuth({
+ *   apiBaseUrl: 'http://localhost:3000',
+ *   apiVersion: 'v1',
+ * }));
+ *
+ * // In components - Use the store
+ * import { useAuthStore } from '@sottosviluppo/auth-frontend';
+ *
  * const authStore = useAuthStore();
  *
- * // Initialize in main.ts or plugin
- * authStore.initialize(config);
+ * // Login
+ * await authStore.login({ email: 'user@example.com', password: 'password' });
  *
- * // Use in components
- * await authStore.login({ email, password });
+ * // Check authentication
+ * if (authStore.isAuthenticated) {
+ *   console.log(`Welcome ${authStore.userName}`);
+ * }
+ *
+ * // Logout
  * await authStore.logout();
  * ```
  */
 export const useAuthStore = defineStore("filcronet-auth", () => {
   // ===== STATE =====
+
+  /** Current authenticated user or null */
   const user = ref<IUser | null>(null);
+
+  /** Whether user is currently authenticated */
   const isAuthenticated = ref<boolean>(false);
+
+  /** Loading state for async operations */
   const isLoading = ref<boolean>(false);
+
+  /** Error message from last failed operation */
   const error = ref<string | null>(null);
+
+  /** Whether the store has been initialized */
   const isInitialized = ref<boolean>(false);
 
   // ===== PRIVATE INSTANCES =====
@@ -52,6 +83,8 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
   /**
    * User's display name (firstName lastName or username or email)
+   *
+   * @returns {string | null} Display name or null if not authenticated
    */
   const userName = computed(() => {
     if (!user.value) return null;
@@ -66,7 +99,9 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   });
 
   /**
-   * User's initials for avatar
+   * User's initials for avatar display
+   *
+   * @returns {string | null} Two-character initials or null if not authenticated
    */
   const userInitials = computed(() => {
     if (!user.value) return null;
@@ -85,7 +120,9 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   });
 
   /**
-   * User's permissions (flattened from roles)
+   * User's permissions flattened from all roles
+   *
+   * @returns {string[]} Array of permission strings in 'resource:action' format
    */
   const userPermissions = computed(() => {
     if (!user.value || !user.value.roles) return [];
@@ -97,6 +134,8 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
   /**
    * User's role names
+   *
+   * @returns {string[]} Array of role names
    */
   const userRoles = computed(() => {
     if (!user.value || !user.value.roles) return [];
@@ -106,19 +145,34 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   // ===== ACTIONS =====
 
   /**
-   * Get current auth configuration
-   * @returns {AuthConfig | null}
+   * Gets current auth configuration
+   *
+   * @returns {AuthConfig | null} Current configuration or null if not initialized
+   * @memberof useAuthStore
    */
   function getConfig(): AuthConfig | null {
     return config || null;
   }
 
   /**
-   * Initialize auth store with configuration
-   * MUST be called before using the store (typically in plugin or main.ts)
+   * Initializes auth store with configuration
+   *
+   * Must be called before using the store. Typically called by the createAuth plugin.
+   * Sets up HTTP client, storage, and token refresh mechanisms.
    *
    * @param {AuthConfig} authConfig - Authentication configuration
    * @memberof useAuthStore
+   *
+   * @example
+   * ```typescript
+   * // Usually called automatically by plugin, but can be called manually:
+   * const authStore = useAuthStore();
+   * authStore.initialize({
+   *   apiBaseUrl: 'http://localhost:3000',
+   *   apiVersion: 'v1',
+   *   autoRefreshToken: true,
+   * });
+   * ```
    */
   function initialize(authConfig: AuthConfig): void {
     config = authConfig;
@@ -128,7 +182,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
     httpClient = config.httpClient || new AuthHttpClient(baseURL);
 
     // Create storage
-    storage = config.storage || new MemoryTokenStorage();
+    storage = config.storage || new TokenStorage();
 
     // Create Auth API
     authApi = new AuthApi(httpClient, storage);
@@ -180,11 +234,27 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Restore session from HttpOnly refresh token cookie
-   * Call this on app startup to check if user has a valid session
+   * Restores session from HttpOnly refresh token cookie
    *
-   * @returns {Promise<boolean>} True if session was restored
+   * Call this on app startup to check if user has a valid session.
+   * The refresh token is stored in an HttpOnly cookie by the backend,
+   * so this will work even after page refresh.
+   *
+   * @returns {Promise<boolean>} True if session was successfully restored
    * @memberof useAuthStore
+   *
+   * @example
+   * ```typescript
+   * // In App.vue or router guard
+   * const authStore = useAuthStore();
+   *
+   * onMounted(async () => {
+   *   const wasRestored = await authStore.restoreSession();
+   *   if (!wasRestored) {
+   *     router.push('/login');
+   *   }
+   * });
+   * ```
    */
   async function restoreSession(): Promise<boolean> {
     // Already authenticated (from memory storage)
@@ -215,11 +285,28 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Wait for initialization to complete
-   * Ensures restoreSession is called only once even if called multiple times
+   * Waits for initialization to complete
+   *
+   * Ensures restoreSession is called only once even if called multiple times.
+   * Useful in router guards to wait for auth state to be determined.
    *
    * @returns {Promise<void>}
    * @memberof useAuthStore
+   *
+   * @example
+   * ```typescript
+   * // In router guard
+   * router.beforeEach(async (to, from, next) => {
+   *   const authStore = useAuthStore();
+   *   await authStore.waitForInit();
+   *
+   *   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+   *     next('/login');
+   *   } else {
+   *     next();
+   *   }
+   * });
+   * ```
    */
   async function waitForInit(): Promise<void> {
     if (isInitialized.value) return;
@@ -233,11 +320,27 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Register a new user
+   * Registers a new user
    *
    * @param {RegisterData} data - Registration data
-   * @returns {Promise<IUser>} Registered user
+   * @returns {Promise<IUser>} Registered and authenticated user
+   * @throws {Error} If registration fails
    * @memberof useAuthStore
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   const user = await authStore.register({
+   *     email: 'newuser@example.com',
+   *     password: 'SecureP@ss123!',
+   *     firstName: 'John',
+   *     lastName: 'Doe',
+   *   });
+   *   console.log(`Welcome ${user.email}!`);
+   * } catch (error) {
+   *   console.error('Registration failed:', error.message);
+   * }
+   * ```
    */
   async function register(data: RegisterData): Promise<IUser> {
     isLoading.value = true;
@@ -264,11 +367,25 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Login with credentials
+   * Authenticates user with credentials
    *
-   * @param {LoginCredentials} credentials - Login credentials
+   * @param {LoginCredentials} credentials - Email and password
    * @returns {Promise<IUser>} Authenticated user
+   * @throws {Error} If login fails (invalid credentials, account suspended, etc.)
    * @memberof useAuthStore
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   const user = await authStore.login({
+   *     email: 'user@example.com',
+   *     password: 'password123',
+   *   });
+   *   router.push('/dashboard');
+   * } catch (error) {
+   *   toast.error(error.message);
+   * }
+   * ```
    */
   async function login(credentials: LoginCredentials): Promise<IUser> {
     isLoading.value = true;
@@ -296,11 +413,27 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Logout current user
-   * Clears tokens (including HttpOnly cookie) and local state
+   * Logs out the current user
+   *
+   * Clears all authentication data including the HttpOnly refresh token cookie.
+   * Redirects to login page if configured.
    *
    * @returns {Promise<void>}
+   * @throws {Error} If logout API call fails (local state is still cleared)
    * @memberof useAuthStore
+   *
+   * @example
+   * ```typescript
+   * async function handleLogout() {
+   *   try {
+   *     await authStore.logout();
+   *     // Redirect happens automatically if configured
+   *   } catch (error) {
+   *     // Error during API call, but user is still logged out locally
+   *     console.error('Logout error:', error);
+   *   }
+   * }
+   * ```
    */
   async function logout(): Promise<void> {
     isLoading.value = true;
@@ -322,11 +455,21 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Fetch current user profile from server
-   * Updates local user state with fresh data
+   * Fetches current user profile from server
    *
-   * @returns {Promise<IUser>}
+   * Updates local user state with fresh data from the server.
+   * Useful after profile updates or to verify authentication.
+   *
+   * @returns {Promise<IUser>} Updated user data
+   * @throws {Error} If fetch fails or user is not authenticated
    * @memberof useAuthStore
+   *
+   * @example
+   * ```typescript
+   * // After updating profile elsewhere
+   * await authStore.fetchCurrentUser();
+   * console.log('Updated user:', authStore.user);
+   * ```
    */
   async function fetchCurrentUser(): Promise<IUser> {
     isLoading.value = true;
@@ -354,10 +497,13 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Manually refresh access token
-   * (Usually not needed, auto-refresh handles this)
+   * Manually refreshes access token
+   *
+   * Usually not needed as auto-refresh handles this automatically.
+   * Use when you need to force a token refresh.
    *
    * @returns {Promise<void>}
+   * @throws {Error} If refresh fails
    * @memberof useAuthStore
    */
   async function refreshToken(): Promise<void> {
@@ -383,7 +529,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Clear error state
+   * Clears error state
    *
    * @memberof useAuthStore
    */
@@ -392,19 +538,32 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Get HTTP client instance for custom API calls
+   * Gets HTTP client instance for custom API calls
    *
-   * @returns {IAuthHttpClient}
+   * Returns the configured HTTP client with authentication already set up.
+   * Useful for making authenticated requests to custom endpoints.
+   *
+   * @returns {IAuthHttpClient} Configured HTTP client
    * @memberof useAuthStore
+   *
+   * @example
+   * ```typescript
+   * const httpClient = authStore.getHttpClient();
+   *
+   * // Make authenticated request to custom endpoint
+   * const data = await httpClient.get('/api/custom-endpoint');
+   * ```
    */
   function getHttpClient(): IAuthHttpClient {
     return httpClient;
   }
 
   /**
-   * Get Auth API instance for direct access
+   * Gets Auth API instance for direct access
    *
-   * @returns {AuthApi}
+   * Returns the AuthApi instance for direct access to auth endpoints.
+   *
+   * @returns {AuthApi} Auth API instance
    * @memberof useAuthStore
    */
   function getAuthApi(): AuthApi {
@@ -414,7 +573,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   // ===== PRIVATE HELPERS =====
 
   /**
-   * Setup token refresh scheduler
+   * Sets up token refresh scheduler
    *
    * @private
    * @param {string} accessToken - JWT access token
@@ -440,7 +599,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
-   * Clear authentication state
+   * Clears all authentication state
    *
    * @private
    */

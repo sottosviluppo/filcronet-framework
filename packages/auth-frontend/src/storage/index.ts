@@ -1,2 +1,8 @@
-export * from './memory-token-storage';
+/**
+ * Storage module
+ * Token storage implementations for authentication
+ *
+ * @packageDocumentation
+ */
+
 export * from "./token-storage";
