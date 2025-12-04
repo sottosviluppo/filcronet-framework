@@ -25,6 +25,16 @@ export interface AuthConfig {
   apiVersion: string;
 
   /**
+   * Global API prefix (optional)
+   * Use this if your NestJS backend has app.setGlobalPrefix() configured
+   * Example: 'api' → /api/v1/auth/login
+   * Default: '' (no prefix)
+   *
+   * @type {string}
+   */
+  apiPrefix?: string;
+
+  /**
    * Custom HTTP client implementation (optional)
    * Default: AxiosHttpClient
    *

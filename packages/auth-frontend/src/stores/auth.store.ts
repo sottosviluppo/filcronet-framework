@@ -178,7 +178,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
     config = authConfig;
 
     // Create HTTP client
-    const baseURL = `${config.apiBaseUrl}/${config.apiVersion}`;
+    const baseURL = buildApiBaseUrl(config);
     httpClient = config.httpClient || new AuthHttpClient(baseURL);
 
     // Create storage
@@ -613,6 +613,31 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
       tokenScheduler.cancel();
       tokenScheduler = null;
     }
+  }
+
+  // ===== PRIVATE HELPERS =====
+
+  /**
+   * Builds the API base URL from configuration
+   *
+   * @private
+   * @param {AuthConfig} config - Auth configuration
+   * @returns {string} Complete base URL for API requests
+   *
+   * @example
+   * // Without prefix: http://localhost:3000/v1
+   * // With prefix 'api': http://localhost:3000/api/v1
+   */
+  function buildApiBaseUrl(config: AuthConfig): string {
+    const parts = [config.apiBaseUrl];
+
+    if (config.apiPrefix) {
+      parts.push(config.apiPrefix);
+    }
+
+    parts.push(config.apiVersion);
+
+    return parts.join("/").replace(/\/+/g, "/").replace(":/", "://");
   }
 
   return {

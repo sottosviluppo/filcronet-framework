@@ -86,6 +86,7 @@ export function createAuth(config: AuthConfig) {
       const finalConfig: AuthConfig = {
         apiBaseUrl: config.apiBaseUrl,
         apiVersion: config.apiVersion,
+        apiPrefix: config.apiPrefix ?? "",
         httpClient: config.httpClient,
         storage: config.storage,
         redirectOnUnauth: config.redirectOnUnauth ?? "/login",

@@ -64,6 +64,7 @@ app.use(
   createAuth({
     apiBaseUrl: import.meta.env.VITE_API_URL, // e.g., 'http://localhost:3000'
     apiVersion: "v1",
+    apiPrefix: "api"
     redirectOnUnauth: "/login",
     redirectOnLogin: "/dashboard",
     redirectOnForbidden: "/forbidden",
