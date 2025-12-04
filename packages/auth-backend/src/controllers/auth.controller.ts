@@ -68,7 +68,8 @@ export class AuthController {
   @ApiResponse({ status: 200, description: "Login successful" })
   async login(
     @Body() loginDto: LoginDto,
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
+    @Req() request: Request
   ): Promise<IApiResponse<Omit<AuthResponseWithTokens, "refreshToken">>> {
     const result = await this.authService.login(loginDto);
 
@@ -78,7 +79,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === "production", // HTTPS only in production
       sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: "/v1/auth/refresh", // Cookie only sent to refresh endpoint
+      path: this.buildCookiePathFromRequest(request), // Cookie only sent to refresh endpoint
     });
 
     // Don't return refresh token in response body
@@ -114,7 +115,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: "/v1/auth/refresh",
+      path: this.buildCookiePathFromRequest(request),
     });
 
     return ResponseHelper.success(
@@ -247,5 +248,32 @@ export class AuthController {
       dto.invitationUrl
     );
     return ResponseHelper.success(result, "Invitation sent successfully");
+  }
+
+  /**
+   * Builds the cookie path from the current request URL
+   * Extracts the base path up to and including '/auth'
+   *
+   * @private
+   * @param {Request} request - Express request object
+   * @returns {string} Cookie path (e.g., '/api/v1/auth')
+   *
+   * @example
+   * // Request to: /api/v1/auth/login
+   * // Returns: '/api/v1/auth'
+   *
+   * // Request to: /v1/auth/refresh
+   * // Returns: '/v1/auth'
+   */
+  private buildCookiePathFromRequest(request: Request): string {
+    const fullPath = request.baseUrl + request.path; // e.g., '/api/v1/auth/login'
+    const authIndex = fullPath.indexOf("/auth");
+
+    if (authIndex !== -1) {
+      return fullPath.substring(0, authIndex + "/auth".length);
+    }
+
+    // Fallback
+    return "/auth";
   }
 }

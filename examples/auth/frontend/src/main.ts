@@ -30,6 +30,7 @@ app.use(
   createAuth({
     apiBaseUrl: "http://localhost:3000",
     apiVersion: "v1",
+    apiPrefix: "api",
     redirectOnUnauth: "/login",
     redirectOnLogin: "/",
     autoRefreshToken: true,
