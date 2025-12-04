@@ -76,12 +76,6 @@ export function createAuth(config: AuthConfig) {
         );
       }
 
-      if (!config.apiVersion) {
-        throw new Error(
-          "[Filcronet Auth] apiVersion is required in configuration"
-        );
-      }
-
       // Apply defaults for optional fields
       const finalConfig: AuthConfig = {
         apiBaseUrl: config.apiBaseUrl,
