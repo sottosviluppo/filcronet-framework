@@ -26,7 +26,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/swagger": "^11.2.3",
     "@nestjs/typeorm": "^11.0.0",
-    "@sottosviluppo/auth-backend": "^0.2.2",
+    "@sottosviluppo/auth-backend": "^0.2.3",
     "cookie-parser": "^1.4.7",
     "nodemailer": "^7.0.10",
     "pg": "^8.16.3",

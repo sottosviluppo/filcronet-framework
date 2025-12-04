@@ -134,14 +134,15 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "User logout" })
   async logout(
-    @Res({ passthrough: true }) response: Response
+    @Res({ passthrough: true }) response: Response,
+    @Req() request: Request
   ): Promise<IApiResponse<void>> {
     // Clear refresh token cookie
     response.clearCookie("refreshToken", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
-      path: "/v1/auth/refresh",
+      path: this.buildCookiePathFromRequest(request),
     });
 
     return ResponseHelper.successMessage("Logout successful");
