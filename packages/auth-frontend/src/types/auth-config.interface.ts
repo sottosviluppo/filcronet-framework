@@ -17,12 +17,13 @@ export interface AuthConfig {
   apiBaseUrl: string;
 
   /**
-   * API version prefix (REQUIRED)
+   * API version prefix (optional)
    * Example: 'v1' → /v1/auth/login
+   * Default: '' (no version prefix)
    *
    * @type {string}
    */
-  apiVersion: string;
+  apiVersion?: string;
 
   /**
    * Global API prefix (optional)

@@ -635,7 +635,9 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
       parts.push(config.apiPrefix);
     }
 
-    parts.push(config.apiVersion);
+    if (config.apiVersion) {
+      parts.push(config.apiVersion);
+    }
 
     return parts.join("/").replace(/\/+/g, "/").replace(":/", "://");
   }

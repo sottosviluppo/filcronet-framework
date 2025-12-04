@@ -62,9 +62,9 @@ app.use(pinia);
 // Install auth plugin
 app.use(
   createAuth({
-    apiBaseUrl: import.meta.env.VITE_API_URL, // e.g., 'http://localhost:3000'
-    apiVersion: "v1",
-    apiPrefix: "api"
+    apiBaseUrl: import.meta.env.VITE_API_URL, // e.g., 'http://localhost:3000' or 'http://localhost:3000/api/v1'
+    apiVersion: "v1", //Optional
+    apiPrefix: "api", //Optional
     redirectOnUnauth: "/login",
     redirectOnLogin: "/dashboard",
     redirectOnForbidden: "/forbidden",

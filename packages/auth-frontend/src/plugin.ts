@@ -85,7 +85,7 @@ export function createAuth(config: AuthConfig) {
       // Apply defaults for optional fields
       const finalConfig: AuthConfig = {
         apiBaseUrl: config.apiBaseUrl,
-        apiVersion: config.apiVersion,
+        apiVersion: config.apiVersion ?? "",
         apiPrefix: config.apiPrefix ?? "",
         httpClient: config.httpClient,
         storage: config.storage,
