@@ -86,8 +86,6 @@ export function createAuth(config: AuthConfig) {
         redirectOnUnauth: config.redirectOnUnauth ?? "/login",
         redirectOnLogin: config.redirectOnLogin ?? "/",
         redirectOnForbidden: config.redirectOnForbidden ?? "/forbidden",
-        autoRefreshToken: config.autoRefreshToken ?? true,
-        refreshBeforeExpiry: config.refreshBeforeExpiry ?? 60000,
       };
 
       // Initialize auth store with configuration

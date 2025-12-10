@@ -9,7 +9,6 @@ import {
 } from "../api";
 import { IUser } from "@sottosviluppo/core";
 import { ITokenStorage } from "../interfaces/token-storage.interface";
-import { TokenRefreshScheduler } from "../utils";
 import { TokenStorage } from "../storage";
 import { IAuthHttpClient } from "../interfaces";
 
@@ -75,7 +74,6 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   let httpClient: IAuthHttpClient;
   let storage: ITokenStorage;
   let authApi: AuthApi;
-  let tokenScheduler: TokenRefreshScheduler | null = null;
   let config: AuthConfig;
   let initPromise: Promise<boolean> | null = null;
 
@@ -155,6 +153,30 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   }
 
   /**
+   * Gets current access token for external use
+   *
+   * Useful when integrating with third-party libraries or custom
+   * HTTP clients that need the raw token.
+   *
+   * @returns {string | null} Current access token or null if not authenticated
+   * @memberof useAuthStore
+   *
+   * @example
+   * ```typescript
+   * const authStore = useAuthStore();
+   * const token = authStore.getAccessToken();
+   *
+   * if (token) {
+   *   // Use with external service
+   *   externalApi.setAuthorization(`Bearer ${token}`);
+   * }
+   * ```
+   */
+  function getAccessToken(): string | null {
+    return storage.getToken();
+  }
+
+  /**
    * Initializes auth store with configuration
    *
    * Must be called before using the store. Typically called by the createAuth plugin.
@@ -194,11 +216,6 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
       // Update user data after refresh
       user.value = response.user;
 
-      // Schedule next refresh
-      if (config.autoRefreshToken !== false && tokenScheduler) {
-        tokenScheduler.schedule(response.accessToken);
-      }
-
       return response.accessToken;
     });
 
@@ -223,11 +240,6 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
       user.value = savedUser;
       isAuthenticated.value = true;
       httpClient.setAuthToken(savedToken);
-
-      // Setup token refresh scheduler if enabled
-      if (config.autoRefreshToken !== false) {
-        setupTokenRefresh(savedToken);
-      }
 
       isInitialized.value = true;
     }
@@ -256,21 +268,13 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
       );
 
       // If token is valid and not expiring soon, we're good
-      if (
-        !isTokenExpired(currentToken) &&
-        !isTokenExpiringSoon(currentToken, config.refreshBeforeExpiry || 60000)
-      ) {
+      if (!isTokenExpired(currentToken)) {
         // Token still valid, ensure state is consistent
         const savedUser = storage.getUser<IUser>();
         if (savedUser) {
           user.value = savedUser;
           isAuthenticated.value = true;
           httpClient.setAuthToken(currentToken);
-
-          // Ensure scheduler is running
-          if (config.autoRefreshToken !== false) {
-            setupTokenRefresh(currentToken);
-          }
 
           isInitialized.value = true;
           return true;
@@ -289,10 +293,6 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
       user.value = response.user;
       isAuthenticated.value = true;
-
-      if (config.autoRefreshToken !== false) {
-        setupTokenRefresh(response.accessToken);
-      }
 
       isInitialized.value = true;
       return true;
@@ -371,12 +371,6 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
       user.value = response.user;
       isAuthenticated.value = true;
-
-      // Setup token refresh scheduler if enabled
-      if (config.autoRefreshToken !== false) {
-        setupTokenRefresh(response.accessToken);
-      }
-
       return response.user;
     } catch (err: any) {
       error.value = err.message || "Registration failed";
@@ -416,11 +410,6 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
       user.value = response.user;
       isAuthenticated.value = true;
-
-      // Setup token refresh scheduler if enabled
-      if (config.autoRefreshToken !== false) {
-        setupTokenRefresh(response.accessToken);
-      }
 
       return response.user;
     } catch (err: any) {
@@ -534,11 +523,6 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
       const response = await authApi.refreshToken();
 
       user.value = response.user;
-
-      // Schedule next refresh
-      if (config.autoRefreshToken !== false && tokenScheduler) {
-        tokenScheduler.schedule(response.accessToken);
-      }
     } catch (err: any) {
       error.value = err.message || "Token refresh failed";
       clearAuthState();
@@ -593,32 +577,6 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
   // ===== PRIVATE HELPERS =====
 
   /**
-   * Sets up token refresh scheduler
-   *
-   * @private
-   * @param {string} accessToken - JWT access token
-   */
-  function setupTokenRefresh(accessToken: string): void {
-    if (tokenScheduler) {
-      tokenScheduler.cancel();
-    }
-
-    const refreshBeforeExpiry = config.refreshBeforeExpiry || 60000; // 1 minute default
-
-    tokenScheduler = new TokenRefreshScheduler(async () => {
-      try {
-        const response = await authApi.refreshToken();
-        user.value = response.user;
-        return response.accessToken;
-      } catch (error) {
-        throw error;
-      }
-    }, refreshBeforeExpiry);
-
-    tokenScheduler.schedule(accessToken);
-  }
-
-  /**
    * Clears all authentication state
    *
    * @private
@@ -628,11 +586,6 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
     isAuthenticated.value = false;
     storage.clear();
     httpClient.setAuthToken(null);
-
-    if (tokenScheduler) {
-      tokenScheduler.cancel();
-      tokenScheduler = null;
-    }
   }
 
   // ===== PRIVATE HELPERS =====
@@ -678,6 +631,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
     // Actions
     getConfig,
+    getAccessToken,
     initialize,
     restoreSession,
     waitForInit,

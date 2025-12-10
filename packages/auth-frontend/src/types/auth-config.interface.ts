@@ -74,21 +74,4 @@ export interface AuthConfig {
    * @type {string}
    */
   redirectOnForbidden?: string;
-
-  /**
-   * Automatically schedule token refresh before expiry (optional)
-   * Default: true
-   *
-   * @type {boolean}
-   */
-  autoRefreshToken?: boolean;
-
-  /**
-   * Refresh token X milliseconds before expiration (optional)
-   * Default: 60000 (1 minute)
-   * Only used if autoRefreshToken is true
-   *
-   * @type {number}
-   */
-  refreshBeforeExpiry?: number;
 }
