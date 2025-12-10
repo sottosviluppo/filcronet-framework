@@ -240,31 +240,51 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
    * The refresh token is stored in an HttpOnly cookie by the backend,
    * so this will work even after page refresh.
    *
+   * This method also validates token expiration and refreshes if needed.
+   *
    * @returns {Promise<boolean>} True if session was successfully restored
    * @memberof useAuthStore
-   *
-   * @example
-   * ```typescript
-   * // In App.vue or router guard
-   * const authStore = useAuthStore();
-   *
-   * onMounted(async () => {
-   *   const wasRestored = await authStore.restoreSession();
-   *   if (!wasRestored) {
-   *     router.push('/login');
-   *   }
-   * });
-   * ```
    */
   async function restoreSession(): Promise<boolean> {
-    // Already authenticated (from memory storage)
-    if (isAuthenticated.value) {
-      isInitialized.value = true;
-      return true;
+    // Check if we have a token in memory
+    const currentToken = storage.getToken();
+
+    if (currentToken) {
+      // Import the helper to check token expiration
+      const { isTokenExpired, isTokenExpiringSoon } = await import(
+        "../utils/jwt-decoder"
+      );
+
+      // If token is valid and not expiring soon, we're good
+      if (
+        !isTokenExpired(currentToken) &&
+        !isTokenExpiringSoon(currentToken, config.refreshBeforeExpiry || 60000)
+      ) {
+        // Token still valid, ensure state is consistent
+        const savedUser = storage.getUser<IUser>();
+        if (savedUser) {
+          user.value = savedUser;
+          isAuthenticated.value = true;
+          httpClient.setAuthToken(currentToken);
+
+          // Ensure scheduler is running
+          if (config.autoRefreshToken !== false) {
+            setupTokenRefresh(currentToken);
+          }
+
+          isInitialized.value = true;
+          return true;
+        }
+      }
+
+      // Token is expired or expiring soon - need to refresh
+      // Clear the expired token first
+      storage.removeToken();
+      httpClient.setAuthToken(null);
     }
 
+    // No valid token in memory, try to refresh using HttpOnly cookie
     try {
-      // Try to refresh token using HttpOnly cookie
       const response = await authApi.refreshToken();
 
       user.value = response.user;

@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Inject,
   Post,
   Query,
   Req,
@@ -34,14 +35,32 @@ import { RegisterDto } from "../dto/register.dto";
 import { PasswordRecoveryService } from "../services/password-recovery.service";
 import { AuthService } from "../services/auth.service";
 import { Response, Request } from "express";
+import { durationToMs } from "../utils/duration.helper";
+import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
 
+/**
+ * Default refresh token expiration (7 days in ms)
+ */
+const DEFAULT_REFRESH_EXPIRATION_MS = 7 * 24 * 60 * 60 * 1000;
 @ApiTags("Authentication")
 @Controller({ path: "auth", version: "1" })
 export class AuthController {
+  /**
+   * Refresh token cookie max age in milliseconds
+   */
+  private readonly refreshTokenMaxAge: number;
+
   constructor(
     private readonly authService: AuthService,
-    private readonly passwordRecoveryService: PasswordRecoveryService
-  ) {}
+    private readonly passwordRecoveryService: PasswordRecoveryService,
+    @Inject("AUTH_OPTIONS")
+    private readonly options: AuthModuleOptions
+  ) {
+    // Calculate cookie maxAge from configuration
+    this.refreshTokenMaxAge = this.options.jwt.refreshExpiresIn
+      ? durationToMs(this.options.jwt.refreshExpiresIn)
+      : DEFAULT_REFRESH_EXPIRATION_MS;
+  }
 
   /**
    * Register a new user
@@ -52,10 +71,19 @@ export class AuthController {
   @ApiOperation({ summary: "Register a new user" })
   @ApiResponse({ status: 201, description: "User successfully registered" })
   async register(
-    @Body() registerDto: RegisterDto
-  ): Promise<IApiResponse<AuthResponseWithTokens>> {
+    @Body() registerDto: RegisterDto,
+    @Res({ passthrough: true }) response: Response,
+    @Req() request: Request
+  ): Promise<IApiResponse<Omit<AuthResponseWithTokens, "refreshToken">>> {
     const result = await this.authService.register(registerDto);
-    return ResponseHelper.success(result, "Registration successful");
+
+    // Set refresh token in HttpOnly cookie
+    this.setRefreshTokenCookie(response, request, result.refreshToken);
+
+    // Don't return refresh token in response body
+    const { refreshToken, ...data } = result;
+
+    return ResponseHelper.success(data, "Registration successful");
   }
 
   /**
@@ -74,13 +102,7 @@ export class AuthController {
     const result = await this.authService.login(loginDto);
 
     // Set refresh token in HttpOnly cookie
-    response.cookie("refreshToken", result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // HTTPS only in production
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      path: this.buildCookiePathFromRequest(request), // Cookie only sent to refresh endpoint
-    });
+    this.setRefreshTokenCookie(response, request, result.refreshToken);
 
     // Don't return refresh token in response body
     const { refreshToken, ...data } = result;
@@ -110,13 +132,7 @@ export class AuthController {
     const result = await this.authService.refreshAccessToken(refreshToken);
 
     // Update refresh token cookie with new one
-    response.cookie("refreshToken", result.refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-      path: this.buildCookiePathFromRequest(request),
-    });
+    this.setRefreshTokenCookie(response, request, result.refreshToken);
 
     return ResponseHelper.success(
       {
@@ -251,6 +267,31 @@ export class AuthController {
     return ResponseHelper.success(result, "Invitation sent successfully");
   }
 
+  // ===== PRIVATE HELPER METHODS =====
+
+  /**
+   * Sets the refresh token HttpOnly cookie with configured expiration
+   *
+   * @private
+   * @param {Response} response - Express response object
+   * @param {Request} request - Express request object
+   * @param {string} refreshToken - JWT refresh token
+   * @memberof AuthController
+   */
+  private setRefreshTokenCookie(
+    response: Response,
+    request: Request,
+    refreshToken: string
+  ): void {
+    response.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: this.refreshTokenMaxAge,
+      path: this.buildCookiePathFromRequest(request),
+    });
+  }
+
   /**
    * Builds the cookie path from the current request URL
    * Extracts the base path up to and including '/auth'
@@ -267,14 +308,13 @@ export class AuthController {
    * // Returns: '/v1/auth'
    */
   private buildCookiePathFromRequest(request: Request): string {
-    const fullPath = request.baseUrl + request.path; // e.g., '/api/v1/auth/login'
+    const fullPath = request.baseUrl + request.path;
     const authIndex = fullPath.indexOf("/auth");
 
     if (authIndex !== -1) {
       return fullPath.substring(0, authIndex + "/auth".length);
     }
 
-    // Fallback
     return "/auth";
   }
 }
