@@ -371,6 +371,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
       user.value = response.user;
       isAuthenticated.value = true;
+      isInitialized.value = true;
       return response.user;
     } catch (err: any) {
       error.value = err.message || "Registration failed";
@@ -410,6 +411,7 @@ export const useAuthStore = defineStore("filcronet-auth", () => {
 
       user.value = response.user;
       isAuthenticated.value = true;
+      isInitialized.value = true;
 
       return response.user;
     } catch (err: any) {

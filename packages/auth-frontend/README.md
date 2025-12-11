@@ -142,6 +142,331 @@ async function handleLogin() {
 </template>
 ```
 
+## Using the Authenticated HTTP Client
+
+The package provides a pre-configured HTTP client with automatic token management and 401 handling. **Always use this client instead of creating your own Axios instance.**
+
+### Why Use the Package's HTTP Client?
+
+The `AuthHttpClient` provides:
+
+- ✅ Automatic token injection in requests
+- ✅ Automatic token refresh on 401 responses
+- ✅ Request queuing during token refresh
+- ✅ Proper error handling and logout on refresh failure
+
+### Approach 1: Use httpClient Directly in Services
+
+```typescript
+// services/products.ts
+import { useAuthStore } from "@sottosviluppo/auth-frontend";
+
+export const productsService = {
+  async getAll() {
+    const authStore = useAuthStore();
+    const httpClient = authStore.getHttpClient();
+    return httpClient.get("/products");
+  },
+
+  async getById(id: string) {
+    const authStore = useAuthStore();
+    const httpClient = authStore.getHttpClient();
+    return httpClient.get(`/products/${id}`);
+  },
+
+  async create(data: CreateProductDto) {
+    const authStore = useAuthStore();
+    const httpClient = authStore.getHttpClient();
+    return httpClient.post("/products", data);
+  },
+
+  async update(id: string, data: UpdateProductDto) {
+    const authStore = useAuthStore();
+    const httpClient = authStore.getHttpClient();
+    return httpClient.put(`/products/${id}`, data);
+  },
+
+  async delete(id: string) {
+    const authStore = useAuthStore();
+    const httpClient = authStore.getHttpClient();
+    return httpClient.delete(`/products/${id}`);
+  },
+};
+```
+
+### Approach 2: Create a Wrapper Function
+
+```typescript
+// services/api.ts
+import { useAuthStore } from "@sottosviluppo/auth-frontend";
+import type { IAuthHttpClient } from "@sottosviluppo/auth-frontend";
+
+/**
+ * Get the authenticated HTTP client from the auth store.
+ * Always use this instead of creating your own Axios instance.
+ */
+export function getApi(): IAuthHttpClient {
+  const authStore = useAuthStore();
+  return authStore.getHttpClient();
+}
+
+// Usage in services
+// services/products.ts
+import { getApi } from "./api";
+
+export const productsService = {
+  async getAll() {
+    return getApi().get("/products");
+  },
+
+  async create(data: CreateProductDto) {
+    return getApi().post("/products", data);
+  },
+};
+```
+
+### Approach 3: Composable for Reactive Access
+
+```typescript
+// composables/useApi.ts
+import { useAuthStore } from '@sottosviluppo/auth-frontend';
+
+export function useApi() {
+  const authStore = useAuthStore();
+
+  return {
+    get: <T>(url: string) => authStore.getHttpClient().get<T>(url),
+    post: <T>(url: string, data?: unknown) => authStore.getHttpClient().post<T>(url, data),
+    put: <T>(url: string, data?: unknown) => authStore.getHttpClient().put<T>(url, data),
+    patch: <T>(url: string, data?: unknown) => authStore.getHttpClient().patch<T>(url, data),
+    delete: <T>(url: string) => authStore.getHttpClient().delete<T>(url),
+  };
+}
+
+// Usage in components
+<script setup lang="ts">
+import { useApi } from '@/composables/useApi';
+
+const api = useApi();
+
+async function loadProducts() {
+  const products = await api.get<Product[]>('/products');
+}
+</script>
+```
+
+## ⚠️ Common Pitfall: Duplicate 401 Interceptors
+
+### What NOT to Do
+
+**Do NOT create your own Axios instance with 401 handling:**
+
+```typescript
+// ❌ WRONG - This will cause infinite reloads!
+// services/api.ts
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL,
+});
+
+// ❌ This interceptor conflicts with the auth package
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // ❌ This causes a full page reload!
+      window.location.href = "/login";
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+### Why This Is Dangerous
+
+When you have two 401 handlers:
+
+1. Your API call returns 401
+2. **Your interceptor fires FIRST** and does `window.location.href = '/login'`
+3. Page reloads completely
+4. The auth package's refresh mechanism **never gets a chance to run**
+5. User is logged out unnecessarily
+
+### The Correct Approach
+
+Let the auth package handle all 401 responses:
+
+```typescript
+// ✅ CORRECT - Use the package's HTTP client
+import { useAuthStore } from "@sottosviluppo/auth-frontend";
+
+export function getApi() {
+  const authStore = useAuthStore();
+  return authStore.getHttpClient();
+}
+```
+
+If you absolutely need a custom Axios instance (e.g., for a third-party API), **do NOT add 401 handling**:
+
+```typescript
+// ✅ OK - Custom client WITHOUT 401 handling
+import axios from "axios";
+
+const externalApi = axios.create({
+  baseURL: "https://external-api.com",
+});
+
+// Only add non-auth interceptors
+externalApi.interceptors.request.use((config) => {
+  config.headers["X-Custom-Header"] = "value";
+  return config;
+});
+
+// ❌ Do NOT add response interceptor for 401
+```
+
+## Troubleshooting
+
+### Problem: Page reloads when navigating to protected routes
+
+**Symptoms:**
+
+- Clicking a link causes a full page reload
+- Browser shows `[vite] connecting...` in console
+- User ends up on login page briefly, then redirects back
+
+**Cause:** You have a custom Axios interceptor that does `window.location.href = '/login'` on 401 errors.
+
+**Solution:** Remove the custom 401 interceptor and use the package's HTTP client:
+
+```typescript
+// Before (wrong)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      window.location.href = "/login"; // ❌ Remove this
+    }
+    return Promise.reject(error);
+  }
+);
+
+// After (correct)
+// Just use authStore.getHttpClient() instead of custom axios instance
+```
+
+### Problem: Token refresh not working
+
+**Symptoms:**
+
+- User gets logged out when access token expires
+- No call to `/auth/refresh` in Network tab
+
+**Possible causes:**
+
+1. **Not using the package's HTTP client**
+
+```typescript
+   // ❌ Wrong
+   import axios from 'axios';
+   const api = axios.create({ ... });
+
+   // ✅ Correct
+   const api = authStore.getHttpClient();
+```
+
+2. **Backend routes not protected**
+
+```typescript
+// ❌ Wrong - Only Swagger decoration, not actual protection
+@ApiBearerAuth()
+@Controller("products")
+export class ProductsController {}
+
+// ✅ Correct - Actually protected
+@ApiBearerAuth()
+@UseGuards(JwtAuthGuard)
+@Controller("products")
+export class ProductsController {}
+```
+
+3. **Missing cookie credentials**
+
+```typescript
+// Ensure withCredentials is true (package handles this automatically)
+// If using custom client, add:
+axios.create({
+  withCredentials: true, // Required for HttpOnly cookies
+});
+```
+
+### Problem: `isAuthenticated` is false after login
+
+**Symptoms:**
+
+- Login succeeds but `authStore.isAuthenticated` is `false`
+- Guards redirect to login page immediately
+
+**Cause:** You may have a duplicate auth store or not using the package's store.
+
+**Solution:** Always import from the package:
+
+```typescript
+// ❌ Wrong - Using local store
+import { useAuthStore } from "@/stores/auth";
+
+// ✅ Correct - Using package store
+import { useAuthStore } from "@sottosviluppo/auth-frontend";
+```
+
+### Problem: Guards cause infinite redirect loop
+
+**Symptoms:**
+
+- Page keeps redirecting between routes
+- Console shows multiple guard executions
+
+**Solution:** Ensure you're not mixing local auth state with package auth state:
+
+```typescript
+// ❌ Wrong - Mixing stores
+import { useAuthStore } from "@/stores/auth"; // Local
+import { requireAuth } from "@sottosviluppo/auth-frontend"; // Package guard uses package store
+
+// ✅ Correct - Use only package store
+import { useAuthStore, requireAuth } from "@sottosviluppo/auth-frontend";
+```
+
+### Problem: CORS errors on refresh endpoint
+
+**Symptoms:**
+
+- `/auth/refresh` fails with CORS error
+- Cookies not being sent
+
+**Solution:** Configure backend CORS properly:
+
+```typescript
+// main.ts (NestJS)
+app.enableCors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true, // ← Required for cookies
+});
+```
+
+And ensure cookie path matches your API:
+
+```typescript
+// auth.controller.ts
+response.cookie("refreshToken", token, {
+  // ... other options
+  path: "/v1/auth", // Must match your API prefix
+});
+```
+
 ## Configuration Options
 
 | Option                | Type              | Default          | Description                               |
