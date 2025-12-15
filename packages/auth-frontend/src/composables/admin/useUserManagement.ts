@@ -1,5 +1,3 @@
-// src/composables/admin/useUserManagement.ts
-
 import { storeToRefs } from "pinia";
 import { useUserManagementStore } from "../../stores";
 import type { CreateUserData, UpdateUserData } from "../../api";
@@ -44,6 +42,8 @@ export function useUserManagement() {
     updateUser: (userId: string, data: UpdateUserData) =>
       store.updateUser(userId, data),
     deleteUser: (userId: string) => store.deleteUser(userId),
+    adminResetPassword: (userId: string, newPassword: string) =>
+      store.adminResetPassword(userId, newPassword),
     clearError: () => store.clearError(),
   };
 }

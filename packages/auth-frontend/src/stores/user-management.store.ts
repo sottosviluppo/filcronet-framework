@@ -173,6 +173,36 @@ export const useUserManagementStore = defineStore(
     }
 
     /**
+     * Admin-initiated password reset
+     * Force-reset a user's password without email flow
+     *
+     * @param {string} userId - Target user UUID
+     * @param {string} newPassword - New password (must meet GDPR requirements)
+     * @returns {Promise<void>}
+     */
+    async function adminResetPassword(
+      userId: string,
+      newPassword: string
+    ): Promise<void> {
+      if (!userApi) {
+        throw new Error("UserManagementStore not initialized");
+      }
+
+      isLoading.value = true;
+      error.value = null;
+
+      try {
+        await userApi.adminResetPassword(userId, newPassword);
+      } catch (err) {
+        error.value =
+          err instanceof Error ? err.message : "Failed to reset password";
+        throw err;
+      } finally {
+        isLoading.value = false;
+      }
+    }
+
+    /**
      * Clear error state
      *
      * @memberof useUserManagementStore
@@ -195,6 +225,7 @@ export const useUserManagementStore = defineStore(
       createUser,
       updateUser,
       deleteUser,
+      adminResetPassword,
       clearError,
     };
   }

@@ -405,4 +405,37 @@ export class UserApi {
       throw new Error(response.message || "Failed to delete user");
     }
   }
+
+  /**
+   * Admin-initiated password reset
+   * Force-reset a user's password without email flow
+   * Requires users:manage permission
+   * Automatically invalidates all existing user sessions
+   *
+   * @param {string} userId - Target user UUID
+   * @param {string} newPassword - New password (must meet GDPR requirements)
+   * @returns {Promise<void>}
+   * @throws {Error} If password validation fails or user not found
+   * @memberof UserApi
+   *
+   * @example
+   * ```typescript
+   * try {
+   *   await userApi.adminResetPassword(userId, 'NewSecureP@ss123');
+   *   showSuccess('Password reset successfully');
+   * } catch (error) {
+   *   showError(error.message);
+   * }
+   * ```
+   */
+  async adminResetPassword(userId: string, newPassword: string): Promise<void> {
+    const response = await this.httpClient.post<IApiResponse<void>>(
+      `/users/${userId}/reset-password`,
+      { newPassword }
+    );
+
+    if (!response.success) {
+      throw new Error(response.message || "Failed to reset password");
+    }
+  }
 }
