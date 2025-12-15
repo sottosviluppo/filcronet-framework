@@ -26,6 +26,7 @@ import { CreateUserDto } from "../dto/create-user.dto";
 import { UserService } from "../services/user.service";
 import { PermissionsGuard } from "../guards/permissions.guard";
 import { JwtAuthGuard } from "../guards/jwt-auth.guard";
+import { AdminResetPasswordDto } from "../dto/admin-reset-password.dto";
 
 @ApiTags("Users")
 @Controller({ path: "users", version: "1" })
@@ -113,5 +114,33 @@ export class UserController {
   ): Promise<IApiResponse<void>> {
     await this.userService.remove(id);
     return ResponseHelper.successMessage("User deleted successfully");
+  }
+
+  /**
+   * Admin-initiated password reset
+   * Allows administrators to force-reset a user's password
+   * Requires users:manage permission
+   *
+   * @param {string} id - Target user UUID
+   * @param {AdminResetPasswordDto} dto - New password data
+   * @returns {Promise<IApiResponse<void>>} Success response
+   */
+  @Post(":id/reset-password")
+  @RequirePermissions("users:manage")
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: "Admin reset user password",
+    description:
+      "Force-reset a user's password without email flow. Requires users:manage permission. Invalidates all existing user sessions.",
+  })
+  async adminResetPassword(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() dto: AdminResetPasswordDto
+  ): Promise<IApiResponse<void>> {
+    const result = await this.userService.adminResetPassword(
+      id,
+      dto.newPassword
+    );
+    return ResponseHelper.successMessage(result.message);
   }
 }

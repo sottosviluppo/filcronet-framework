@@ -16,10 +16,12 @@ import {
   UserStatus,
   IPaginatedApiResponse,
   IPaginationParams,
+  PasswordValidator,
 } from "@sottosviluppo/core";
 import { PasswordRecoveryService } from "./password-recovery.service";
 import { UserCreatedWithInvitation } from "../interfaces/user-invitation.interface";
 import { AuthModuleOptions } from "../interfaces/auth-module-options.interface";
+import { mapPasswordErrorKeys } from "../utils/password-error-messages";
 
 /**
  * Internal type for user creation with additional fields
@@ -359,5 +361,72 @@ export class UserService {
       userId,
       invitationUrlBase
     );
+  }
+
+  /**
+   * Admin-initiated password reset
+   * Allows administrators to force-reset a user's password without email flow
+   * Automatically invalidates all existing sessions by incrementing passwordVersion
+   *
+   * @param {string} userId - Target user UUID
+   * @param {string} newPassword - New password (will be validated and hashed)
+   * @returns {Promise<{ message: string }>} Success message
+   * @throws {NotFoundException} If user not found
+   * @throws {BadRequestException} If password doesn't meet GDPR requirements
+   * @memberof UserService
+   *
+   * @example
+   * ```typescript
+   * // In controller with users:manage permission
+   * await userService.adminResetPassword(userId, 'NewSecureP@ss123');
+   * ```
+   */
+  async adminResetPassword(
+    userId: string,
+    newPassword: string
+  ): Promise<{ message: string }> {
+    // Load user with password field for validation context
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      select: [
+        "id",
+        "email",
+        "username",
+        "firstName",
+        "lastName",
+        "password",
+        "passwordVersion",
+        "status",
+      ],
+    });
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    // Validate password with user context (GDPR-compliant)
+    const validationResult = PasswordValidator.validatePassword(newPassword, {
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
+
+    if (!validationResult.isValid) {
+      const errorMessages = mapPasswordErrorKeys(validationResult.errorKeys);
+
+      throw new BadRequestException({
+        message: "Password validation failed",
+        errors: errorMessages,
+      });
+    }
+
+    // Update password and increment version to invalidate all sessions
+    user.password = newPassword; // Will be hashed by @BeforeInsert/@BeforeUpdate
+    user.passwordVersion = (user.passwordVersion || 0) + 1;
+
+    await this.userRepository.save(user);
+
+    return { message: "Password reset successfully" };
   }
 }

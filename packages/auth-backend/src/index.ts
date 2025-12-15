@@ -69,6 +69,7 @@ export * from "./dto/update-role.dto";
 export * from "./dto/reset-password.dto";
 export * from "./dto/set-password.dto";
 export * from "./dto/forgot-password.dto";
+export * from "./dto/admin-reset-password.dto";
 
 // Guards
 export * from "./guards/jwt-auth.guard";
