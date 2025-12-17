@@ -192,6 +192,18 @@ export interface IGuardsOptions {
    * ```
    */
   guards: Type<CanActivate>[];
+
+  /**
+   * Swagger security scheme name
+   * This should match the security scheme defined in your Swagger setup
+   * Common values: 'bearer', 'basic', 'api_key'
+   * If not provided, no security decorator will be shown in Swagger
+   *
+   * @type {string}
+   * @example 'bearer' // For JWT Bearer auth
+   * @example 'basic' // For Basic auth
+   */
+  swaggerSecurityName?: string;
 }
 
 /**

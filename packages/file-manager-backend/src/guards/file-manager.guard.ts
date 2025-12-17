@@ -8,16 +8,19 @@ import {
   CanActivate,
   ExecutionContext,
   Inject,
+  Logger,
+  UnauthorizedException,
 } from "@nestjs/common";
-import { ModuleRef } from "@nestjs/core";
+import { ModuleRef, ContextIdFactory } from "@nestjs/core";
 import { IFileManagerModuleOptions } from "../interfaces/file-manager-options.interface";
 import { FILE_MANAGER_OPTIONS } from "../constants/file-manager.constants";
+import { firstValueFrom, isObservable } from "rxjs";
 
 /**
  * Dynamic guard that delegates authentication/authorization
  * to the guards configured in module options.
  *
- * If no guards are configured, all requests are allowed (with a warning logged at startup).
+ * If no guards are configured, all requests are allowed.
  *
  * @export
  * @class FileManagerGuard
@@ -25,6 +28,8 @@ import { FILE_MANAGER_OPTIONS } from "../constants/file-manager.constants";
  */
 @Injectable()
 export class FileManagerGuard implements CanActivate {
+  private readonly logger = new Logger(FileManagerGuard.name);
+
   constructor(
     @Inject(FILE_MANAGER_OPTIONS)
     private readonly options: IFileManagerModuleOptions,
@@ -47,18 +52,35 @@ export class FileManagerGuard implements CanActivate {
       return true;
     }
 
+    // Create a context ID for request-scoped resolution
+    const contextId = ContextIdFactory.create();
+
+    // Register the request in the context (needed for request-scoped providers)
+    const request = context.switchToHttp().getRequest();
+    this.moduleRef.registerRequestByContextId(request, contextId);
+
     // Execute each guard in sequence
     for (const GuardClass of guardClasses) {
-      const guard = this.moduleRef.get(GuardClass, { strict: false });
+      try {
+        // Resolve guard instance with request context
+        const guard = await this.moduleRef.resolve<CanActivate>(
+          GuardClass,
+          contextId,
+          { strict: false }
+        );
 
-      if (!guard) {
-        // Try to instantiate if not found in module ref
-        const guardInstance = new GuardClass();
-        const result = await this.executeGuard(guardInstance, context);
-        if (!result) return false;
-      } else {
         const result = await this.executeGuard(guard, context);
-        if (!result) return false;
+        if (!result) {
+          return false;
+        }
+      } catch (error) {
+        // Re-throw authentication/authorization errors
+        if (error instanceof UnauthorizedException) {
+          throw error;
+        }
+
+        this.logger.error(`Error executing guard ${GuardClass.name}: ${error}`);
+        throw error;
       }
     }
 
@@ -66,7 +88,7 @@ export class FileManagerGuard implements CanActivate {
   }
 
   /**
-   * Executes a single guard and handles both sync and async results
+   * Executes a single guard and handles sync, async, and Observable results
    */
   private async executeGuard(
     guard: CanActivate,
@@ -74,16 +96,18 @@ export class FileManagerGuard implements CanActivate {
   ): Promise<boolean> {
     const result = guard.canActivate(context);
 
-    if (result instanceof Promise) {
-      return (await result) ?? false;
-    }
-
     if (typeof result === "boolean") {
       return result;
     }
 
-    // Observable - use firstValueFrom instead of deprecated toPromise
-    const { firstValueFrom } = await import("rxjs");
-    return (await firstValueFrom(result)) ?? false;
+    if (result instanceof Promise) {
+      return (await result) ?? false;
+    }
+
+    if (isObservable(result)) {
+      return (await firstValueFrom(result)) ?? false;
+    }
+
+    return false;
   }
 }

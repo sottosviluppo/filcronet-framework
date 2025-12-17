@@ -31,6 +31,7 @@ import {
   ApiConsumes,
   ApiBody,
   ApiParam,
+  ApiBearerAuth,
 } from "@nestjs/swagger";
 import { FileInterceptor, FilesInterceptor } from "@nestjs/platform-express";
 import type { Response, Request } from "express";
@@ -87,6 +88,7 @@ export interface IFileResponse {
  * @class FileController
  */
 @ApiTags("Files")
+@ApiBearerAuth()
 @Controller({ path: "files", version: "1" })
 @UseGuards(FileManagerGuard)
 export class FileController {
