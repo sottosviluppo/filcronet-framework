@@ -1,0 +1,68 @@
+{
+  "name": "@sottosviluppo/file-manager-backend",
+  "version": "0.1.0",
+  "description": "File management module for NestJS with upload, storage, validation, and cleanup",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rimraf dist",
+    "prepublishOnly": "pnpm build"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sottosviluppo/filcronet-framework.git",
+    "directory": "packages/file-manager-backend"
+  },
+  "keywords": [
+    "filcronet",
+    "file",
+    "backend",
+    "nestjs",
+    "typeorm"
+  ],
+  "author": "Filippo Crotti",
+  "license": "UNLICENSED",
+  "private": false,
+  "peerDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/swagger": "^11.2.2",
+    "@nestjs/typeorm": "^11.0.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "rxjs": "^7.8.2",
+    "typeorm": "^0.3.27"
+  },
+  "dependencies": {
+    "@nestjs/platform-express": "^11.1.9",
+    "@nestjs/schedule": "^5.0.1",
+    "@sottosviluppo/core": "workspace:*",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.1.9",
+    "@nestjs/core": "^11.1.9",
+    "@nestjs/swagger": "^11.2.2",
+    "@nestjs/typeorm": "^11.0.0",
+    "@types/express": "^5.0.5",
+    "@types/multer": "^1.4.12",
+    "@types/node": "^24.10.1",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.2",
+    "reflect-metadata": "^0.2.2",
+    "rimraf": "^5.0.0",
+    "rxjs": "^7.8.2",
+    "typeorm": "^0.3.27",
+    "typescript": "^5.9.3"
+  },
+  "packageManager": "pnpm@10.19.0"
+}
