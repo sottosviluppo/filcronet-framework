@@ -3,7 +3,7 @@
  * @packageDocumentation
  */
 
-import { ModuleMetadata } from "@nestjs/common";
+import { ModuleMetadata, Type, CanActivate } from "@nestjs/common";
 
 /**
  * Storage configuration options
@@ -171,6 +171,30 @@ export interface IDefaultsOptions {
 }
 
 /**
+ * Guard configuration for protecting file endpoints
+ *
+ * @export
+ * @interface IGuardsOptions
+ */
+export interface IGuardsOptions {
+  /**
+   * Guards to apply to all file endpoints
+   * These guards will be applied in order
+   *
+   * @type {Type<CanActivate>[]}
+   * @example
+   * ```typescript
+   * import { JwtAuthGuard, PermissionsGuard } from '@sottosviluppo/auth-backend';
+   *
+   * guards: {
+   *   guards: [JwtAuthGuard, PermissionsGuard],
+   * }
+   * ```
+   */
+  guards: Type<CanActivate>[];
+}
+
+/**
  * Complete FileManager module configuration options
  *
  * @export
@@ -231,6 +255,20 @@ export interface IFileManagerModuleOptions {
    * @type {IDefaultsOptions}
    */
   defaults?: IDefaultsOptions;
+
+  /**
+   * Guards to protect file endpoints (optional but recommended)
+   * If not provided, endpoints will be unprotected!
+   *
+   * @type {IGuardsOptions}
+   * @example
+   * ```typescript
+   * guards: {
+   *   guards: [JwtAuthGuard, PermissionsGuard],
+   * }
+   * ```
+   */
+  guards?: IGuardsOptions;
 }
 
 /**

@@ -23,6 +23,9 @@ import { CleanupService } from "./services/cleanup.service";
 import { FileController } from "./controllers/file.controller";
 import { AdminFileController } from "./controllers/admin-file.controller";
 
+// Guards
+import { FileManagerGuard } from "./guards/file-manager.guard";
+
 // Interfaces
 import {
   IFileManagerModuleOptions,
@@ -45,39 +48,37 @@ import {
  * - Batch operations
  * - Entity associations
  *
- * IMPORTANT: This module does NOT include authentication/authorization.
- * Apply guards globally in your application or use @sottosviluppo/auth-backend.
+ * REQUIREMENTS:
+ * - TypeORM must be configured with `autoLoadEntities: true`
+ * - Guards should be provided via the `guards` option for authentication
  *
  * @export
  * @class FilcronetFileManagerModule
  *
  * @example
  * ```typescript
- * // app.module.ts
  * import { FilcronetFileManagerModule } from '@sottosviluppo/file-manager-backend';
- * import { APP_GUARD } from '@nestjs/core';
- * import { JwtAuthGuard } from '@sottosviluppo/auth-backend';
+ * import { JwtAuthGuard, PermissionsGuard } from '@sottosviluppo/auth-backend';
  *
  * @Module({
  *   imports: [
+ *     TypeOrmModule.forRoot({
+ *       autoLoadEntities: true,
+ *       // ...
+ *     }),
+ *
  *     FilcronetFileManagerModule.forRoot({
  *       storage: {
  *         basePath: './uploads',
  *         publicUrlPath: '/uploads/public',
  *       },
  *       validation: {
- *         maxFileSize: 10 * 1024 * 1024,
  *         allowedMimeTypes: ['image/*', 'application/pdf'],
  *       },
- *       cleanup: {
- *         enabled: true,
- *         retentionDays: 30,
+ *       guards: {
+ *         guards: [JwtAuthGuard, PermissionsGuard],
  *       },
  *     }),
- *   ],
- *   providers: [
- *     // Apply authentication globally
- *     { provide: APP_GUARD, useClass: JwtAuthGuard },
  *   ],
  * })
  * export class AppModule {}
@@ -95,28 +96,23 @@ export class FilcronetFileManagerModule {
    * @param {IFileManagerModuleOptions} options - Module configuration
    * @returns {DynamicModule} Configured NestJS module
    * @memberof FilcronetFileManagerModule
-   *
-   * @example
-   * ```typescript
-   * FilcronetFileManagerModule.forRoot({
-   *   storage: {
-   *     basePath: '/var/www/uploads',
-   *     publicUrlPath: '/uploads/public',
-   *   },
-   *   validation: {
-   *     maxFileSize: 10 * 1024 * 1024,
-   *     allowedMimeTypes: ['image/*', 'application/pdf'],
-   *     validateMagicBytes: true,
-   *   },
-   *   cleanup: {
-   *     enabled: true,
-   *     retentionDays: 30,
-   *   },
-   * })
-   * ```
    */
   static forRoot(options: IFileManagerModuleOptions): DynamicModule {
     this.logger.log("Initializing File Manager Module");
+
+    // Warn if no guards configured
+    if (!options.guards?.guards?.length) {
+      this.logger.warn(
+        "⚠️  No guards configured! File endpoints will be unprotected. " +
+          "Configure guards via the 'guards' option."
+      );
+    } else {
+      this.logger.log(
+        `Guards configured: ${options.guards.guards
+          .map((g) => g.name)
+          .join(", ")}`
+      );
+    }
 
     const maxFileSize =
       options.validation?.maxFileSize ?? FILE_MANAGER_DEFAULTS.MAX_FILE_SIZE;
@@ -139,20 +135,31 @@ export class FilcronetFileManagerModule {
       );
     }
 
+    // Build providers array - include configured guard classes
+    const providers: any[] = [
+      {
+        provide: FILE_MANAGER_OPTIONS,
+        useValue: options,
+      },
+      StorageService,
+      MetadataService,
+      FileService,
+      CleanupService,
+      FileManagerGuard,
+    ];
+
+    // Add the guard classes themselves so they can be resolved by ModuleRef
+    if (options.guards?.guards?.length) {
+      for (const guard of options.guards.guards) {
+        providers.push(guard);
+      }
+    }
+
     return {
       module: FilcronetFileManagerModule,
       imports,
       controllers: [FileController, AdminFileController],
-      providers: [
-        {
-          provide: FILE_MANAGER_OPTIONS,
-          useValue: options,
-        },
-        StorageService,
-        MetadataService,
-        FileService,
-        CleanupService,
-      ],
+      providers,
       exports: [
         FileService,
         StorageService,
@@ -165,34 +172,11 @@ export class FilcronetFileManagerModule {
 
   /**
    * Configures the file manager module with async options
-   * Useful when configuration depends on other services (e.g., ConfigService)
    *
    * @static
    * @param {IFileManagerModuleAsyncOptions} options - Async module options
    * @returns {DynamicModule} Configured NestJS module
    * @memberof FilcronetFileManagerModule
-   *
-   * @example
-   * ```typescript
-   * FilcronetFileManagerModule.forRootAsync({
-   *   imports: [ConfigModule],
-   *   inject: [ConfigService],
-   *   useFactory: (config: ConfigService) => ({
-   *     storage: {
-   *       basePath: config.get('UPLOAD_PATH'),
-   *       publicUrlPath: config.get('PUBLIC_URL'),
-   *     },
-   *     validation: {
-   *       maxFileSize: parseInt(config.get('MAX_FILE_SIZE')),
-   *       allowedMimeTypes: config.get('ALLOWED_TYPES').split(','),
-   *     },
-   *     cleanup: {
-   *       enabled: config.get('CLEANUP_ENABLED') === 'true',
-   *       retentionDays: parseInt(config.get('RETENTION_DAYS')),
-   *     },
-   *   }),
-   * })
-   * ```
    */
   static forRootAsync(options: IFileManagerModuleAsyncOptions): DynamicModule {
     this.logger.log("Initializing File Manager Module (async)");
@@ -202,7 +186,6 @@ export class FilcronetFileManagerModule {
       imports: [
         ...(options.imports || []),
         TypeOrmModule.forFeature([FileEntity]),
-        // Multer configured async
         MulterModule.registerAsync({
           imports: options.imports,
           inject: options.inject,
@@ -220,7 +203,6 @@ export class FilcronetFileManagerModule {
             };
           },
         }),
-        // Always include ScheduleModule for async (we don't know if cleanup is enabled yet)
         ScheduleModule.forRoot(),
       ],
       controllers: [FileController, AdminFileController],
@@ -234,6 +216,7 @@ export class FilcronetFileManagerModule {
         MetadataService,
         FileService,
         CleanupService,
+        FileManagerGuard,
       ],
       exports: [
         FileService,

@@ -14,6 +14,7 @@ import {
   Body,
   Query,
   UseInterceptors,
+  UseGuards,
   UploadedFile,
   UploadedFiles,
   ParseUUIDPipe,
@@ -27,7 +28,6 @@ import {
   ApiTags,
   ApiOperation,
   ApiResponse,
-  ApiBearerAuth,
   ApiConsumes,
   ApiBody,
   ApiParam,
@@ -45,6 +45,7 @@ import { BatchFileOperationDto } from "../dto/batch-file-operation.dto";
 import { IApiResponse, IPaginatedApiResponse } from "@sottosviluppo/core";
 import { ResponseHelper } from "../utils/response.helper";
 import { IFileMetadata } from "../entities/file.entity";
+import { FileManagerGuard } from "../guards/file-manager.guard";
 
 /**
  * Extended Request with user property
@@ -82,29 +83,12 @@ export interface IFileResponse {
  * Controller for file management operations
  * Provides endpoints for upload, download, update, and deletion of files
  *
- * NOTE: This controller does NOT include authentication guards.
- * The consuming application must apply guards at the module or application level.
- *
  * @export
  * @class FileController
- *
- * @example
- * ```typescript
- * // In your app.module.ts, apply guards globally or per-route
- * import { APP_GUARD } from '@nestjs/core';
- * import { JwtAuthGuard } from '@sottosviluppo/auth-backend';
- *
- * @Module({
- *   providers: [
- *     { provide: APP_GUARD, useClass: JwtAuthGuard },
- *   ],
- * })
- * export class AppModule {}
- * ```
  */
 @ApiTags("Files")
 @Controller({ path: "files", version: "1" })
-@ApiBearerAuth()
+@UseGuards(FileManagerGuard)
 export class FileController {
   constructor(
     private readonly fileService: FileService,

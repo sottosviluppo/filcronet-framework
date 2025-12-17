@@ -73,6 +73,9 @@ export * from "./services/cleanup.service";
 export * from "./controllers/file.controller";
 export * from "./controllers/admin-file.controller";
 
+// Guards
+export * from "./guards/file-manager.guard";
+
 // DTOs
 export * from "./dto/upload-file.dto";
 export * from "./dto/update-file.dto";

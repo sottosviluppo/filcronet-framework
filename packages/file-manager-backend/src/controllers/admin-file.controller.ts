@@ -4,18 +4,21 @@
  * @packageDocumentation
  */
 
-import { Controller, Get, Post, HttpCode, HttpStatus } from "@nestjs/common";
 import {
-  ApiTags,
-  ApiOperation,
-  ApiResponse,
-  ApiBearerAuth,
-} from "@nestjs/swagger";
+  Controller,
+  Get,
+  Post,
+  HttpCode,
+  HttpStatus,
+  UseGuards,
+} from "@nestjs/common";
+import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
 
 import { CleanupService } from "../services/cleanup.service";
 import { StorageService } from "../services/storage.service";
 import { IApiResponse } from "@sottosviluppo/core";
 import { ResponseHelper } from "../utils/response.helper";
+import { FileManagerGuard } from "../guards/file-manager.guard";
 import { formatBytes } from "../constants/file-manager.constants";
 
 /**
@@ -95,7 +98,7 @@ export interface IHealthCheckResponse {
  */
 @ApiTags("Files - Admin")
 @Controller({ path: "files/admin", version: "1" })
-@ApiBearerAuth()
+@UseGuards(FileManagerGuard)
 export class AdminFileController {
   constructor(
     private readonly cleanupService: CleanupService,

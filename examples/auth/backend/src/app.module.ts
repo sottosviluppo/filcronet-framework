@@ -1,8 +1,13 @@
 import { MailerModule } from '@nestjs-modules/mailer';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { FilcronetAuthModule } from '@sottosviluppo/auth-backend';
+import {
+  FilcronetAuthModule,
+  JwtAuthGuard,
+  PermissionsGuard,
+} from '@sottosviluppo/auth-backend';
 import { EmailModule } from './email.module';
+import { FilcronetFileManagerModule } from '@sottosviluppo/file-manager-backend';
 
 @Module({
   imports: [
@@ -46,6 +51,27 @@ import { EmailModule } from './email.module';
         { name: 'products', description: 'Product catalog management' },
         { name: 'orders', description: 'Order processing and tracking' },
       ],
+    }),
+    FilcronetFileManagerModule.forRoot({
+      storage: {
+        basePath: './uploads',
+        publicUrlPath: '/uploads/public',
+      },
+      validation: {
+        maxFileSize: 10 * 1024 * 1024, // 10MB
+        allowedMimeTypes: ['image/*', 'application/pdf', 'text/plain'],
+        validateMagicBytes: true,
+      },
+      cleanup: {
+        enabled: false,
+        retentionDays: 7,
+      },
+      defaults: {
+        isPublic: false,
+      },
+      guards: {
+        guards: [JwtAuthGuard, PermissionsGuard],
+      },
     }),
   ],
   controllers: [],
