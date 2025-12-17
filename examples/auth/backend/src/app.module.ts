@@ -37,7 +37,7 @@ import { FilcronetFileManagerModule } from '@sottosviluppo/file-manager-backend'
       jwt: {
         secret:
           process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-        expiresIn: '1m',
+        expiresIn: '15m',
         refreshExpiresIn: '7d',
       },
       passwordReset: {
