@@ -17,11 +17,17 @@ import {
  * @interface IUploadedFile
  */
 export interface IUploadedFile {
-  fieldname: string;
+  /** Field name (optional, not always needed) */
+  fieldname?: string;
+  /** Original filename */
   originalname: string;
-  encoding: string;
+  /** Encoding (optional, not always needed) */
+  encoding?: string;
+  /** MIME type */
   mimetype: string;
+  /** File size in bytes */
   size: number;
+  /** File content buffer */
   buffer: Buffer;
 }
 

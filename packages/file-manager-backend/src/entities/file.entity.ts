@@ -28,6 +28,10 @@ export interface IFileMetadata {
   format?: string;
   /** ISO timestamp when metadata was extracted */
   extractedAt?: string;
+  /** Custom description */
+  description?: string;
+  /** Allow any additional custom fields */
+  [key: string]: unknown;
 }
 
 /**
