@@ -1,6 +1,6 @@
 {
   "name": "@sottosviluppo/file-manager-backend",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "File management module for NestJS with upload, storage, validation, and cleanup",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -15,6 +15,7 @@ import {
 
 /**
  * File metadata extracted from file content
+ * Supports both extracted fields (width, height, etc.) and custom fields (description, etc.)
  *
  * @export
  * @interface IFileMetadata
@@ -78,7 +79,7 @@ export class FileEntity {
    * @type {string}
    * @example 'my-document.pdf'
    */
-  @Column({ length: 255 })
+  @Column({ type: "varchar", length: 255 })
   originalName: string;
 
   /**
@@ -88,7 +89,7 @@ export class FileEntity {
    * @type {string}
    * @example '2024/12/a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf'
    */
-  @Column({ length: 500, unique: true })
+  @Column({ type: "varchar", length: 500, unique: true })
   @Index()
   storageName: string;
 
@@ -98,7 +99,7 @@ export class FileEntity {
    * @type {string}
    * @example 'application/pdf', 'image/jpeg'
    */
-  @Column({ length: 127 })
+  @Column({ type: "varchar", length: 127 })
   @Index()
   mimeType: string;
 
@@ -125,11 +126,12 @@ export class FileEntity {
    * @type {string}
    * @example '/documents/invoices/2024/'
    */
-  @Column({ length: 1000, default: "/" })
+  @Column({ type: "varchar", length: 1000, default: "/" })
   path: string;
 
   /**
    * Whether the file is publicly accessible without authentication
+   * Note: No explicit type for cross-database compatibility (maps to bit on MSSQL)
    *
    * @type {boolean}
    */
@@ -142,7 +144,7 @@ export class FileEntity {
    * @type {(string | null)}
    * @example 'user', 'order', 'product'
    */
-  @Column({ length: 100, nullable: true })
+  @Column({ type: "varchar", length: 100, nullable: true })
   entityType: string | null;
 
   /**
@@ -151,7 +153,7 @@ export class FileEntity {
    * @type {(string | null)}
    * @example '123', 'abc-def-ghi'
    */
-  @Column({ length: 100, nullable: true })
+  @Column({ type: "varchar", length: 100, nullable: true })
   entityId: string | null;
 
   /**
@@ -177,7 +179,7 @@ export class FileEntity {
    * @type {(string | null)}
    * @example 'invoices', 'avatars', 'documents'
    */
-  @Column({ length: 100, nullable: true })
+  @Column({ type: "varchar", length: 100, nullable: true })
   category: string | null;
 
   /**
