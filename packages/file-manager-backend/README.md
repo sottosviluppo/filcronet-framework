@@ -15,6 +15,7 @@ This package provides enterprise-grade file management with validation, storage 
 - **Entity Associations**: Polymorphic relations to link files with any entity
 - **Tags & Categories**: Flexible file organization and filtering
 - **Swagger Documentation**: Full OpenAPI documentation for all endpoints
+- **Multi-Database Support**: PostgreSQL, MySQL, and MSSQL
 
 ## Installation
 
@@ -44,20 +45,135 @@ This package is hosted on GitHub Packages. Configure your `.npmrc`:
 //npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
 ```
 
+## Database Requirements
+
+### Supported Databases
+
+This package supports the following databases:
+
+| Database   | Version     | Notes                |
+| ---------- | ----------- | -------------------- |
+| PostgreSQL | 12+         | Recommended          |
+| MySQL      | 5.7+ / 8.0+ | Full support         |
+| MSSQL      | 2017+       | Full support         |
+| SQLite     | 3.x         | For development only |
+
+### Important: Default Connection Requirement
+
+**This package requires the default (unnamed) TypeORM connection.** If your application uses multiple database connections, you must ensure that the database where you want to store files uses the default connection (without a name).
+
+#### Single Database Setup
+
+If your application uses only one database, no special configuration is needed:
+
+```typescript
+// app.module.ts
+TypeOrmModule.forRoot({
+  type: "postgres",
+  host: "localhost",
+  port: 5432,
+  username: "postgres",
+  password: "password",
+  database: "myapp",
+  autoLoadEntities: true,
+  synchronize: true, // Only for development
+});
+```
+
+#### Multiple Database Setup
+
+If your application uses multiple databases, the file-manager-backend **must** use the default (unnamed) connection. Name only your secondary connections:
+
+```typescript
+// app.module.ts
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { FilcronetFileManagerModule } from "@sottosviluppo/file-manager-backend";
+
+@Module({
+  imports: [
+    // PRIMARY DATABASE (default connection) - Used by file-manager-backend
+    // DO NOT specify a "name" property here
+    TypeOrmModule.forRoot({
+      type: "postgres",
+      host: "localhost",
+      port: 5432,
+      username: "postgres",
+      password: "password",
+      database: "main_db",
+      autoLoadEntities: true,
+      synchronize: true,
+      // NO "name" property - this is the default connection
+    }),
+
+    // SECONDARY DATABASE (named connection) - For other purposes
+    TypeOrmModule.forRoot({
+      name: "legacy", // Named connection
+      type: "mssql",
+      host: "legacy-server",
+      port: 1433,
+      username: "sa",
+      password: "password",
+      database: "legacy_db",
+      entities: [
+        /* your legacy entities */
+      ],
+      synchronize: false,
+    }),
+
+    // File manager will automatically use the default connection
+    FilcronetFileManagerModule.forRoot({
+      storage: {
+        basePath: "./uploads",
+        publicUrlPath: "/uploads/public",
+      },
+      validation: {
+        maxFileSize: 10 * 1024 * 1024,
+        allowedMimeTypes: ["image/*", "application/pdf"],
+      },
+    }),
+  ],
+})
+export class AppModule {}
+```
+
+#### Using Named Connection in Your Repositories
+
+For your own entities on the secondary database, specify the connection name:
+
+```typescript
+// In your module
+@Module({
+  imports: [
+    TypeOrmModule.forFeature([LegacyEntity], "legacy"), // Specify connection name
+  ],
+})
+export class LegacyModule {}
+
+// In your service
+@Injectable()
+export class LegacyService {
+  constructor(
+    @InjectRepository(LegacyEntity, "legacy") // Specify connection name
+    private readonly legacyRepo: Repository<LegacyEntity>
+  ) {}
+}
+```
+
 ## Quick Start
 
 ### Basic Setup (No Authentication)
 
 ```typescript
 // app.module.ts
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { FilcronetFileManagerModule } from '@sottosviluppo/file-manager-backend';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { FilcronetFileManagerModule } from "@sottosviluppo/file-manager-backend";
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
-      type: 'postgres',
+      type: "postgres",
       // ... your database config
       autoLoadEntities: true, // Required!
       synchronize: true, // Only for development
@@ -65,12 +181,12 @@ import { FilcronetFileManagerModule } from '@sottosviluppo/file-manager-backend'
 
     FilcronetFileManagerModule.forRoot({
       storage: {
-        basePath: './uploads',
-        publicUrlPath: '/uploads/public',
+        basePath: "./uploads",
+        publicUrlPath: "/uploads/public",
       },
       validation: {
         maxFileSize: 10 * 1024 * 1024, // 10MB
-        allowedMimeTypes: ['image/*', 'application/pdf'],
+        allowedMimeTypes: ["image/*", "application/pdf"],
       },
     }),
   ],
@@ -87,47 +203,47 @@ When using with `@sottosviluppo/auth-backend`, you need to:
 
 ```typescript
 // app.module.ts
-import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { ServeStaticModule } from "@nestjs/serve-static";
+import { join } from "path";
 import {
   FilcronetAuthModule,
   JwtAuthGuard,
   PermissionsGuard,
-} from '@sottosviluppo/auth-backend';
-import { FilcronetFileManagerModule } from '@sottosviluppo/file-manager-backend';
+} from "@sottosviluppo/auth-backend";
+import { FilcronetFileManagerModule } from "@sottosviluppo/file-manager-backend";
 
 @Module({
   imports: [
     TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: 'localhost',
+      type: "postgres",
+      host: "localhost",
       port: 5432,
-      username: 'postgres',
-      password: 'password',
-      database: 'mydb',
+      username: "postgres",
+      password: "password",
+      database: "mydb",
       autoLoadEntities: true,
       synchronize: true,
     }),
 
     // Serve public files statically
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'uploads', 'public'),
-      serveRoot: '/uploads/public',
+      rootPath: join(__dirname, "..", "uploads", "public"),
+      serveRoot: "/uploads/public",
     }),
 
     // Auth module - IMPORTANT: Add 'files' resource for permissions
     FilcronetAuthModule.forRoot({
       jwt: {
         secret: process.env.JWT_SECRET,
-        expiresIn: '15m',
-        refreshExpiresIn: '7d',
+        expiresIn: "15m",
+        refreshExpiresIn: "7d",
       },
       resources: [
-        // This creates permissions: files:create, files:read, files:update, 
+        // This creates permissions: files:create, files:read, files:update,
         // files:delete, files:list, files:manage
-        { name: 'files', description: 'File management' },
+        { name: "files", description: "File management" },
         // ... your other resources
       ],
     }),
@@ -135,12 +251,12 @@ import { FilcronetFileManagerModule } from '@sottosviluppo/file-manager-backend'
     // File manager with guards from auth-backend
     FilcronetFileManagerModule.forRoot({
       storage: {
-        basePath: './uploads',
-        publicUrlPath: '/uploads/public',
+        basePath: "./uploads",
+        publicUrlPath: "/uploads/public",
       },
       validation: {
         maxFileSize: 10 * 1024 * 1024,
-        allowedMimeTypes: ['image/*', 'application/pdf', 'text/plain'],
+        allowedMimeTypes: ["image/*", "application/pdf", "text/plain"],
         validateMagicBytes: true,
       },
       cleanup: {
@@ -163,22 +279,22 @@ export class AppModule {}
 
 When using with `@sottosviluppo/auth-backend`, the following permissions are used by the endpoints:
 
-| Endpoint | Required Permission | Description |
-|----------|-------------------|-------------|
-| `POST /v1/files/upload` | `files:create` | Upload single file |
-| `POST /v1/files/upload/multiple` | `files:create` | Upload multiple files |
-| `GET /v1/files` | `files:list` | List files |
-| `GET /v1/files/:id` | `files:read` | Get file details |
-| `GET /v1/files/:id/download` | `files:read` | Download file |
-| `GET /v1/files/entity/:type/:id` | `files:list` | Get files by entity |
-| `PATCH /v1/files/:id` | `files:update` | Update file metadata |
-| `PATCH /v1/files/batch/update` | `files:update` | Batch update |
-| `DELETE /v1/files/:id` | `files:delete` | Soft delete file |
-| `DELETE /v1/files/:id/permanent` | `files:manage` | Permanent delete |
-| `DELETE /v1/files/batch/delete` | `files:delete` | Batch soft delete |
-| `POST /v1/files/:id/restore` | `files:update` | Restore deleted file |
-| `GET /v1/files/admin/*` | `files:manage` | Admin endpoints |
-| `POST /v1/files/admin/cleanup/run` | `files:manage` | Trigger cleanup |
+| Endpoint                           | Required Permission | Description           |
+| ---------------------------------- | ------------------- | --------------------- |
+| `POST /v1/files/upload`            | `files:create`      | Upload single file    |
+| `POST /v1/files/upload/multiple`   | `files:create`      | Upload multiple files |
+| `GET /v1/files`                    | `files:list`        | List files            |
+| `GET /v1/files/:id`                | `files:read`        | Get file details      |
+| `GET /v1/files/:id/download`       | `files:read`        | Download file         |
+| `GET /v1/files/entity/:type/:id`   | `files:list`        | Get files by entity   |
+| `PATCH /v1/files/:id`              | `files:update`      | Update file metadata  |
+| `PATCH /v1/files/batch/update`     | `files:update`      | Batch update          |
+| `DELETE /v1/files/:id`             | `files:delete`      | Soft delete file      |
+| `DELETE /v1/files/:id/permanent`   | `files:manage`      | Permanent delete      |
+| `DELETE /v1/files/batch/delete`    | `files:delete`      | Batch soft delete     |
+| `POST /v1/files/:id/restore`       | `files:update`      | Restore deleted file  |
+| `GET /v1/files/admin/*`            | `files:manage`      | Admin endpoints       |
+| `POST /v1/files/admin/cleanup/run` | `files:manage`      | Trigger cleanup       |
 
 **Note**: You must add `{ name: 'files', description: 'File management' }` to the `resources` array in `FilcronetAuthModule.forRoot()` configuration. This will automatically create all the required permissions (`files:create`, `files:read`, `files:update`, `files:delete`, `files:list`, `files:manage`).
 
@@ -186,9 +302,9 @@ When using with `@sottosviluppo/auth-backend`, the following permissions are use
 
 ```typescript
 // app.module.ts
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { FilcronetFileManagerModule } from '@sottosviluppo/file-manager-backend';
+import { Module } from "@nestjs/common";
+import { ConfigModule, ConfigService } from "@nestjs/config";
+import { FilcronetFileManagerModule } from "@sottosviluppo/file-manager-backend";
 
 @Module({
   imports: [
@@ -199,17 +315,20 @@ import { FilcronetFileManagerModule } from '@sottosviluppo/file-manager-backend'
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         storage: {
-          basePath: config.get('UPLOAD_PATH', './uploads'),
-          publicUrlPath: config.get('PUBLIC_URL_PATH', '/uploads/public'),
+          basePath: config.get("UPLOAD_PATH", "./uploads"),
+          publicUrlPath: config.get("PUBLIC_URL_PATH", "/uploads/public"),
         },
         validation: {
-          maxFileSize: parseInt(config.get('MAX_FILE_SIZE', '10485760')),
-          allowedMimeTypes: config.get('ALLOWED_TYPES', 'image/*,application/pdf').split(','),
-          validateMagicBytes: config.get('VALIDATE_MAGIC_BYTES', 'true') === 'true',
+          maxFileSize: parseInt(config.get("MAX_FILE_SIZE", "10485760")),
+          allowedMimeTypes: config
+            .get("ALLOWED_TYPES", "image/*,application/pdf")
+            .split(","),
+          validateMagicBytes:
+            config.get("VALIDATE_MAGIC_BYTES", "true") === "true",
         },
         cleanup: {
-          enabled: config.get('CLEANUP_ENABLED', 'false') === 'true',
-          retentionDays: parseInt(config.get('RETENTION_DAYS', '30')),
+          enabled: config.get("CLEANUP_ENABLED", "false") === "true",
+          retentionDays: parseInt(config.get("RETENTION_DAYS", "30")),
         },
       }),
     }),
@@ -248,41 +367,41 @@ uploads/
 
 ### Storage Options
 
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `basePath` | `string` | Yes | - | Base directory for file storage |
-| `publicUrlPath` | `string` | Yes | - | URL path prefix for public files |
-| `publicDir` | `string` | No | `'public'` | Subdirectory for public files |
-| `privateDir` | `string` | No | `'private'` | Subdirectory for private files |
+| Option          | Type     | Required | Default     | Description                      |
+| --------------- | -------- | -------- | ----------- | -------------------------------- |
+| `basePath`      | `string` | Yes      | -           | Base directory for file storage  |
+| `publicUrlPath` | `string` | Yes      | -           | URL path prefix for public files |
+| `publicDir`     | `string` | No       | `'public'`  | Subdirectory for public files    |
+| `privateDir`    | `string` | No       | `'private'` | Subdirectory for private files   |
 
 ### Validation Options
 
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `maxFileSize` | `number` | No | `10485760` (10MB) | Maximum file size in bytes |
-| `allowedMimeTypes` | `string[]` | Yes | - | Allowed MIME types (supports wildcards like `image/*`) |
-| `mimeTypeRules` | `Record<string, { maxSize: number }>` | No | - | Per-MIME-type size limits |
-| `validateMagicBytes` | `boolean` | No | `true` | Validate file content matches MIME type |
+| Option               | Type                                  | Required | Default           | Description                                            |
+| -------------------- | ------------------------------------- | -------- | ----------------- | ------------------------------------------------------ |
+| `maxFileSize`        | `number`                              | No       | `10485760` (10MB) | Maximum file size in bytes                             |
+| `allowedMimeTypes`   | `string[]`                            | Yes      | -                 | Allowed MIME types (supports wildcards like `image/*`) |
+| `mimeTypeRules`      | `Record<string, { maxSize: number }>` | No       | -                 | Per-MIME-type size limits                              |
+| `validateMagicBytes` | `boolean`                             | No       | `true`            | Validate file content matches MIME type                |
 
 ### Cleanup Options
 
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `enabled` | `boolean` | No | `false` | Enable automatic cleanup of soft-deleted files |
-| `retentionDays` | `number` | No | `30` | Days to retain soft-deleted files |
-| `cronExpression` | `string` | No | `'0 3 * * *'` | Cron schedule for cleanup job |
+| Option           | Type      | Required | Default       | Description                                    |
+| ---------------- | --------- | -------- | ------------- | ---------------------------------------------- |
+| `enabled`        | `boolean` | No       | `false`       | Enable automatic cleanup of soft-deleted files |
+| `retentionDays`  | `number`  | No       | `30`          | Days to retain soft-deleted files              |
+| `cronExpression` | `string`  | No       | `'0 3 * * *'` | Cron schedule for cleanup job                  |
 
 ### Defaults Options
 
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `isPublic` | `boolean` | No | `false` | Default visibility for uploaded files |
+| Option     | Type      | Required | Default | Description                           |
+| ---------- | --------- | -------- | ------- | ------------------------------------- |
+| `isPublic` | `boolean` | No       | `false` | Default visibility for uploaded files |
 
 ### Guards Options
 
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `guards` | `Type<CanActivate>[]` | No | `[]` | Guards to protect all endpoints |
+| Option   | Type                  | Required | Default | Description                     |
+| -------- | --------------------- | -------- | ------- | ------------------------------- |
+| `guards` | `Type<CanActivate>[]` | No       | `[]`    | Guards to protect all endpoints |
 
 ## API Reference
 
@@ -297,17 +416,18 @@ POST /v1/files/upload
 Content-Type: multipart/form-data
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `file` | `File` | Yes | The file to upload |
-| `path` | `string` | No | Virtual path (must start and end with `/`) |
-| `isPublic` | `boolean` | No | File visibility |
-| `entityType` | `string` | No | Associated entity type |
-| `entityId` | `string` | No | Associated entity ID |
-| `tags` | `string[]` | No | Tags for categorization |
-| `category` | `string` | No | Category for grouping |
+| Field        | Type       | Required | Description                                |
+| ------------ | ---------- | -------- | ------------------------------------------ |
+| `file`       | `File`     | Yes      | The file to upload                         |
+| `path`       | `string`   | No       | Virtual path (must start and end with `/`) |
+| `isPublic`   | `boolean`  | No       | File visibility                            |
+| `entityType` | `string`   | No       | Associated entity type                     |
+| `entityId`   | `string`   | No       | Associated entity ID                       |
+| `tags`       | `string[]` | No       | Tags for categorization                    |
+| `category`   | `string`   | No       | Category for grouping                      |
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -332,15 +452,15 @@ POST /v1/files/upload/multiple
 Content-Type: multipart/form-data
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `files` | `File[]` | Yes | Files to upload (max 10) |
-| `path` | `string` | No | Virtual path for all files |
-| `isPublic` | `boolean` | No | Visibility for all files |
-| `entityType` | `string` | No | Associated entity type |
-| `entityId` | `string` | No | Associated entity ID |
-| `tags` | `string[]` | No | Tags for all files |
-| `category` | `string` | No | Category for all files |
+| Field        | Type       | Required | Description                |
+| ------------ | ---------- | -------- | -------------------------- |
+| `files`      | `File[]`   | Yes      | Files to upload (max 10)   |
+| `path`       | `string`   | No       | Virtual path for all files |
+| `isPublic`   | `boolean`  | No       | Visibility for all files   |
+| `entityType` | `string`   | No       | Associated entity type     |
+| `entityId`   | `string`   | No       | Associated entity ID       |
+| `tags`       | `string[]` | No       | Tags for all files         |
+| `category`   | `string`   | No       | Category for all files     |
 
 #### List Files
 
@@ -348,22 +468,22 @@ Content-Type: multipart/form-data
 GET /v1/files
 ```
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `page` | `number` | `1` | Page number |
-| `limit` | `number` | `20` | Items per page (max 100) |
-| `sortBy` | `string` | `createdAt` | Sort field |
-| `sortOrder` | `ASC\|DESC` | `DESC` | Sort order |
-| `path` | `string` | - | Filter by path prefix |
-| `isPublic` | `boolean` | - | Filter by visibility |
-| `entityType` | `string` | - | Filter by entity type |
-| `entityId` | `string` | - | Filter by entity ID |
-| `mimeType` | `string` | - | Filter by MIME type (supports wildcards) |
-| `category` | `string` | - | Filter by category |
-| `tags` | `string[]` | - | Filter by tags (must have ALL) |
-| `uploadedById` | `string` | - | Filter by uploader |
-| `search` | `string` | - | Search in filename |
-| `includeDeleted` | `boolean` | `false` | Include soft-deleted files |
+| Parameter        | Type        | Default     | Description                              |
+| ---------------- | ----------- | ----------- | ---------------------------------------- |
+| `page`           | `number`    | `1`         | Page number                              |
+| `limit`          | `number`    | `20`        | Items per page (max 100)                 |
+| `sortBy`         | `string`    | `createdAt` | Sort field                               |
+| `sortOrder`      | `ASC\|DESC` | `DESC`      | Sort order                               |
+| `path`           | `string`    | -           | Filter by path prefix                    |
+| `isPublic`       | `boolean`   | -           | Filter by visibility                     |
+| `entityType`     | `string`    | -           | Filter by entity type                    |
+| `entityId`       | `string`    | -           | Filter by entity ID                      |
+| `mimeType`       | `string`    | -           | Filter by MIME type (supports wildcards) |
+| `category`       | `string`    | -           | Filter by category                       |
+| `tags`           | `string[]`  | -           | Filter by tags (must have ALL)           |
+| `uploadedById`   | `string`    | -           | Filter by uploader                       |
+| `search`         | `string`    | -           | Search in filename                       |
+| `includeDeleted` | `boolean`   | `false`     | Include soft-deleted files               |
 
 #### Get File by ID
 
@@ -460,6 +580,7 @@ GET /v1/files/admin/stats/storage
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -484,6 +605,7 @@ GET /v1/files/admin/stats/cleanup
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -502,6 +624,7 @@ POST /v1/files/admin/cleanup/run
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -528,8 +651,8 @@ The package exports several services that can be injected into your own services
 Main service for file operations.
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { FileService } from '@sottosviluppo/file-manager-backend';
+import { Injectable } from "@nestjs/common";
+import { FileService } from "@sottosviluppo/file-manager-backend";
 
 @Injectable()
 export class MyService {
@@ -537,13 +660,13 @@ export class MyService {
 
   async attachFileToOrder(fileId: string, orderId: string) {
     return this.fileService.update(fileId, {
-      entityType: 'order',
+      entityType: "order",
       entityId: orderId,
     });
   }
 
   async getOrderFiles(orderId: string) {
-    return this.fileService.findByEntity('order', orderId);
+    return this.fileService.findByEntity("order", orderId);
   }
 }
 ```
@@ -553,8 +676,8 @@ export class MyService {
 Low-level storage operations.
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { StorageService } from '@sottosviluppo/file-manager-backend';
+import { Injectable } from "@nestjs/common";
+import { StorageService } from "@sottosviluppo/file-manager-backend";
 
 @Injectable()
 export class MyService {
@@ -571,8 +694,8 @@ export class MyService {
 Manual cleanup operations.
 
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { CleanupService } from '@sottosviluppo/file-manager-backend';
+import { Injectable } from "@nestjs/common";
+import { CleanupService } from "@sottosviluppo/file-manager-backend";
 
 @Injectable()
 export class MyService {
@@ -606,10 +729,10 @@ import {
   detectMimeType,
   canValidateMimeType,
   getSupportedMimeTypes,
-} from '@sottosviluppo/file-manager-backend';
+} from "@sottosviluppo/file-manager-backend";
 
 // Validate file content
-const result = validateMagicBytes(fileBuffer, 'image/jpeg');
+const result = validateMagicBytes(fileBuffer, "image/jpeg");
 if (!result.valid) {
   console.error(result.message);
 }
@@ -618,7 +741,7 @@ if (!result.valid) {
 const mimeType = detectMimeType(fileBuffer);
 
 // Check if validation is available
-const canValidate = canValidateMimeType('image/jpeg'); // true
+const canValidate = canValidateMimeType("image/jpeg"); // true
 
 // Get all supported types
 const supported = getSupportedMimeTypes();
@@ -628,24 +751,33 @@ const supported = getSupportedMimeTypes();
 
 The package creates a `files` table with the following structure:
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | `UUID` | Primary key |
-| `originalName` | `VARCHAR(255)` | Original filename |
-| `storageName` | `VARCHAR(500)` | Relative storage path (e.g., `2024/12/uuid.pdf`) |
-| `mimeType` | `VARCHAR(127)` | File MIME type |
-| `size` | `BIGINT` | File size in bytes |
-| `path` | `VARCHAR(1000)` | Virtual path for organization |
-| `isPublic` | `BOOLEAN` | Visibility flag |
-| `entityType` | `VARCHAR(100)` | Associated entity type |
-| `entityId` | `VARCHAR(100)` | Associated entity ID |
-| `metadata` | `JSON` | Extracted metadata |
-| `tags` | `JSON` | Array of tags |
-| `category` | `VARCHAR(100)` | Category |
-| `uploadedById` | `UUID` | Uploader user ID |
-| `createdAt` | `TIMESTAMP` | Creation timestamp |
-| `updatedAt` | `TIMESTAMP` | Last update timestamp |
-| `deletedAt` | `TIMESTAMP` | Soft delete timestamp |
+| Column         | Type                      | Description                                      |
+| -------------- | ------------------------- | ------------------------------------------------ |
+| `id`           | `UUID`                    | Primary key                                      |
+| `originalName` | `VARCHAR(255)`            | Original filename                                |
+| `storageName`  | `VARCHAR(500)`            | Relative storage path (e.g., `2024/12/uuid.pdf`) |
+| `mimeType`     | `VARCHAR(127)`            | File MIME type                                   |
+| `size`         | `BIGINT`                  | File size in bytes                               |
+| `path`         | `VARCHAR(1000)`           | Virtual path for organization                    |
+| `isPublic`     | `BOOLEAN` / `BIT`         | Visibility flag (type varies by database)        |
+| `entityType`   | `VARCHAR(100)`            | Associated entity type                           |
+| `entityId`     | `VARCHAR(100)`            | Associated entity ID                             |
+| `metadata`     | `JSON` / `NVARCHAR(MAX)`  | Extracted metadata (type varies by database)     |
+| `tags`         | `JSON` / `NVARCHAR(MAX)`  | Array of tags (type varies by database)          |
+| `category`     | `VARCHAR(100)`            | Category                                         |
+| `uploadedById` | `UUID`                    | Uploader user ID                                 |
+| `createdAt`    | `TIMESTAMP` / `DATETIME2` | Creation timestamp                               |
+| `updatedAt`    | `TIMESTAMP` / `DATETIME2` | Last update timestamp                            |
+| `deletedAt`    | `TIMESTAMP` / `DATETIME2` | Soft delete timestamp                            |
+
+### Database-Specific Type Mappings
+
+| Column      | PostgreSQL  | MySQL        | MSSQL           |
+| ----------- | ----------- | ------------ | --------------- |
+| `isPublic`  | `boolean`   | `tinyint(1)` | `bit`           |
+| `metadata`  | `json`      | `json`       | `nvarchar(MAX)` |
+| `tags`      | `json`      | `json`       | `nvarchar(MAX)` |
+| `createdAt` | `timestamp` | `datetime`   | `datetime2`     |
 
 ### Indexes
 
@@ -667,8 +799,41 @@ Ensure `autoLoadEntities: true` is set in your TypeORM configuration:
 TypeOrmModule.forRoot({
   autoLoadEntities: true,
   // ...
-})
+});
 ```
+
+### "No connection found" or connection errors with multiple databases
+
+This package requires the **default (unnamed) TypeORM connection**. If you have multiple database connections:
+
+1. Ensure the database for file storage uses the default connection (no `name` property)
+2. Add the `name` property only to your secondary connections
+
+```typescript
+// ✅ Correct - file-manager uses this (default) connection
+TypeOrmModule.forRoot({
+  type: "postgres",
+  // ... config WITHOUT "name" property
+});
+
+// ✅ Correct - secondary connection with name
+TypeOrmModule.forRoot({
+  name: "secondary", // Named connection
+  type: "mssql",
+  // ... config
+});
+
+// ❌ Wrong - this would break file-manager
+TypeOrmModule.forRoot({
+  name: "primary", // Don't name the primary connection!
+  type: "postgres",
+  // ...
+});
+```
+
+### MSSQL: "Data type not supported" errors
+
+This package is compatible with MSSQL. If you encounter type errors, ensure you're using the latest version of the package. The entity uses database-agnostic column definitions that TypeORM automatically maps to the correct types for each database.
 
 ### Endpoints return 401 Unauthorized
 
@@ -680,20 +845,22 @@ TypeOrmModule.forRoot({
 FilcronetAuthModule.forRoot({
   // ...
   resources: [
-    { name: 'files', description: 'File management' }, // Required!
+    { name: "files", description: "File management" }, // Required!
   ],
-})
+});
 ```
 
 ### Guards not working
 
 1. Ensure guards are exported from their module:
+
 ```typescript
 // auth.module.ts
-exports: [JwtAuthGuard, PermissionsGuard]
+exports: [JwtAuthGuard, PermissionsGuard];
 ```
 
 2. Ensure auth module is imported before file-manager module:
+
 ```typescript
 imports: [
   FilcronetAuthModule.forRoot({ ... }), // First
@@ -712,16 +879,16 @@ imports: [
 Ensure you've configured static file serving with the correct path structure:
 
 ```typescript
-import { ServeStaticModule } from '@nestjs/serve-static';
-import { join } from 'path';
+import { ServeStaticModule } from "@nestjs/serve-static";
+import { join } from "path";
 
 ServeStaticModule.forRoot({
-  rootPath: join(__dirname, '..', 'uploads', 'public'),
-  serveRoot: '/uploads/public',
-})
+  rootPath: join(__dirname, "..", "uploads", "public"),
+  serveRoot: "/uploads/public",
+});
 ```
 
-**Note**: Public files are now stored in date-based subdirectories (e.g., `/uploads/public/2024/12/uuid.jpg`). The static file server will handle this automatically.
+**Note**: Public files are stored in date-based subdirectories (e.g., `/uploads/public/2024/12/uuid.jpg`). The static file server will handle this automatically.
 
 ### Cleanup not running
 
@@ -732,6 +899,7 @@ ServeStaticModule.forRoot({
 ### TypeScript errors with DTOs
 
 Ensure you have these packages installed:
+
 ```bash
 pnpm add class-validator class-transformer
 ```
@@ -758,7 +926,7 @@ RETENTION_DAYS=30
 - Node.js >= 20
 - NestJS >= 10
 - TypeORM >= 0.3
-- PostgreSQL / MySQL / SQLite
+- PostgreSQL 12+ / MySQL 5.7+ / MSSQL 2017+ / SQLite 3.x
 
 ## License
 
