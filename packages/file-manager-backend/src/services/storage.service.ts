@@ -2,7 +2,7 @@ import { Injectable, Inject, OnModuleInit, Logger } from "@nestjs/common";
 import { randomUUID } from "crypto";
 import { createReadStream, createWriteStream, ReadStream } from "fs";
 import { mkdir, unlink, access, stat, readdir } from "fs/promises";
-import { join, dirname, extname } from "path";
+import { join, dirname, extname, basename } from "path";
 import { pipeline } from "stream/promises";
 import type { IFileManagerModuleOptions } from "../interfaces/file-manager-options.interface";
 import {
@@ -32,8 +32,11 @@ export interface IUploadedFile {
  * @interface IStorageResult
  */
 export interface IStorageResult {
+  /** Relative path including date folders and filename (e.g., "2024/12/uuid.pdf") */
   storageName: string;
+  /** Full absolute path to the file */
   storagePath: string;
+  /** File size in bytes */
   size: number;
 }
 
@@ -41,8 +44,25 @@ export interface IStorageResult {
  * Service responsible for filesystem operations
  * Handles file storage, retrieval, and deletion
  *
+ * Files are organized in date-based directories (YYYY/MM) to avoid
+ * filesystem limitations on files per directory.
+ *
  * @export
  * @class StorageService
+ *
+ * @example
+ * Storage structure:
+ * ```
+ * uploads/
+ * ├── public/
+ * │   └── 2024/
+ * │       └── 12/
+ * │           └── uuid-abc123.jpg
+ * └── private/
+ *     └── 2024/
+ *         └── 12/
+ *             └── uuid-def456.pdf
+ * ```
  */
 @Injectable()
 export class StorageService implements OnModuleInit {
@@ -97,30 +117,53 @@ export class StorageService implements OnModuleInit {
   }
 
   /**
-   * Generates a unique storage name for a file
+   * Generates the date-based directory path (YYYY/MM)
+   *
+   * @param {Date} [date=new Date()] - Date to use for path generation
+   * @returns {string} Date path in format "YYYY/MM"
+   * @memberof StorageService
+   *
+   * @example
+   * ```typescript
+   * generateDatePath(new Date('2024-12-15'))
+   * // '2024/12'
+   * ```
+   */
+  generateDatePath(date: Date = new Date()): string {
+    const year = date.getFullYear().toString();
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
+    return `${year}/${month}`;
+  }
+
+  /**
+   * Generates a unique storage name for a file including date path
    *
    * @param {string} originalName - Original filename with extension
-   * @returns {string} UUID-based unique filename
+   * @param {Date} [date=new Date()] - Date to use for path generation
+   * @returns {string} Full relative path with UUID-based filename
    * @memberof StorageService
    *
    * @example
    * ```typescript
    * generateStorageName('document.pdf')
-   * // 'a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf'
+   * // '2024/12/a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf'
    * ```
    */
-  generateStorageName(originalName: string): string {
+  generateStorageName(originalName: string, date: Date = new Date()): string {
     const ext = extname(originalName).toLowerCase();
     const uuid = randomUUID();
-    return ext ? `${uuid}${ext}` : uuid;
+    const filename = ext ? `${uuid}${ext}` : uuid;
+    const datePath = this.generateDatePath(date);
+    return `${datePath}/${filename}`;
   }
 
   /**
    * Stores a file to the appropriate directory based on visibility
+   * Files are organized in date-based subdirectories (YYYY/MM)
    *
    * @param {IUploadedFile} file - Uploaded file from multer
    * @param {boolean} isPublic - Whether the file should be stored in public directory
-   * @returns {Promise<IStorageResult>} Storage result with generated filename and path
+   * @returns {Promise<IStorageResult>} Storage result with generated path and filename
    * @throws {Error} If file cannot be written
    * @memberof StorageService
    */
@@ -129,8 +172,8 @@ export class StorageService implements OnModuleInit {
     isPublic: boolean
   ): Promise<IStorageResult> {
     const storageName = this.generateStorageName(file.originalname);
-    const targetDir = isPublic ? this.getPublicPath() : this.getPrivatePath();
-    const storagePath = join(targetDir, storageName);
+    const baseDir = isPublic ? this.getPublicPath() : this.getPrivatePath();
+    const storagePath = join(baseDir, storageName);
 
     await this.writeFile(storagePath, file.buffer);
 
@@ -143,8 +186,9 @@ export class StorageService implements OnModuleInit {
 
   /**
    * Moves a file between public and private directories
+   * Preserves the date-based path structure
    *
-   * @param {string} storageName - Current storage name of the file
+   * @param {string} storageName - Current storage name (including date path)
    * @param {boolean} fromPublic - Current location (true = public)
    * @param {boolean} toPublic - Target location (true = public)
    * @returns {Promise<string>} New storage path
@@ -156,14 +200,17 @@ export class StorageService implements OnModuleInit {
     toPublic: boolean
   ): Promise<string> {
     if (fromPublic === toPublic) {
-      const dir = toPublic ? this.getPublicPath() : this.getPrivatePath();
-      return join(dir, storageName);
+      const baseDir = toPublic ? this.getPublicPath() : this.getPrivatePath();
+      return join(baseDir, storageName);
     }
 
     const sourceDir = fromPublic ? this.getPublicPath() : this.getPrivatePath();
     const targetDir = toPublic ? this.getPublicPath() : this.getPrivatePath();
     const sourcePath = join(sourceDir, storageName);
     const targetPath = join(targetDir, storageName);
+
+    // Ensure target directory exists (including date subdirectories)
+    await this.ensureDirectoryExists(dirname(targetPath));
 
     const readStream = createReadStream(sourcePath);
     const writeStream = createWriteStream(targetPath);
@@ -177,7 +224,7 @@ export class StorageService implements OnModuleInit {
   /**
    * Gets a readable stream for a file
    *
-   * @param {string} storageName - Storage name of the file
+   * @param {string} storageName - Storage name (including date path)
    * @param {boolean} isPublic - Whether the file is in public directory
    * @returns {ReadStream} Readable stream of the file
    * @memberof StorageService
@@ -190,20 +237,20 @@ export class StorageService implements OnModuleInit {
   /**
    * Gets the full filesystem path for a file
    *
-   * @param {string} storageName - Storage name of the file
+   * @param {string} storageName - Storage name (including date path)
    * @param {boolean} isPublic - Whether the file is in public directory
    * @returns {string} Full filesystem path
    * @memberof StorageService
    */
   getFilePath(storageName: string, isPublic: boolean): string {
-    const dir = isPublic ? this.getPublicPath() : this.getPrivatePath();
-    return join(dir, storageName);
+    const baseDir = isPublic ? this.getPublicPath() : this.getPrivatePath();
+    return join(baseDir, storageName);
   }
 
   /**
    * Gets the public URL for a publicly accessible file
    *
-   * @param {string} storageName - Storage name of the file
+   * @param {string} storageName - Storage name (including date path)
    * @returns {string} Public URL path
    * @memberof StorageService
    */
@@ -214,7 +261,7 @@ export class StorageService implements OnModuleInit {
   /**
    * Deletes a file from the filesystem
    *
-   * @param {string} storageName - Storage name of the file
+   * @param {string} storageName - Storage name (including date path)
    * @param {boolean} isPublic - Whether the file is in public directory
    * @returns {Promise<void>}
    * @memberof StorageService
@@ -227,7 +274,7 @@ export class StorageService implements OnModuleInit {
   /**
    * Checks if a file exists
    *
-   * @param {string} storageName - Storage name of the file
+   * @param {string} storageName - Storage name (including date path)
    * @param {boolean} isPublic - Whether to check in public directory
    * @returns {Promise<boolean>} True if file exists
    * @memberof StorageService
@@ -240,7 +287,7 @@ export class StorageService implements OnModuleInit {
   /**
    * Gets file statistics
    *
-   * @param {string} storageName - Storage name of the file
+   * @param {string} storageName - Storage name (including date path)
    * @param {boolean} isPublic - Whether the file is in public directory
    * @returns {Promise<import('fs').Stats>} File statistics
    * @memberof StorageService
@@ -251,19 +298,52 @@ export class StorageService implements OnModuleInit {
   }
 
   /**
-   * Lists all files in a directory
+   * Recursively lists all files in a directory tree
+   *
+   * @param {string} dirPath - Directory path to scan
+   * @returns {Promise<string[]>} Array of relative file paths
+   * @memberof StorageService
+   */
+  private async listFilesRecursive(dirPath: string): Promise<string[]> {
+    const files: string[] = [];
+
+    try {
+      const entries = await readdir(dirPath, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = join(dirPath, entry.name);
+
+        if (entry.isDirectory()) {
+          const subFiles = await this.listFilesRecursive(fullPath);
+          files.push(...subFiles);
+        } else if (entry.isFile()) {
+          files.push(fullPath);
+        }
+      }
+    } catch {
+      // Directory doesn't exist or can't be read
+    }
+
+    return files;
+  }
+
+  /**
+   * Lists all files in public or private storage
    *
    * @param {boolean} isPublic - Whether to list public directory
-   * @returns {Promise<string[]>} Array of filenames
+   * @returns {Promise<string[]>} Array of storage names (relative paths)
    * @memberof StorageService
    */
   async listFiles(isPublic: boolean): Promise<string[]> {
-    const dir = isPublic ? this.getPublicPath() : this.getPrivatePath();
-    try {
-      return await readdir(dir);
-    } catch {
-      return [];
-    }
+    const baseDir = isPublic ? this.getPublicPath() : this.getPrivatePath();
+    const absolutePaths = await this.listFilesRecursive(baseDir);
+
+    // Convert absolute paths to relative storage names
+    return absolutePaths.map((absPath) => {
+      const relativePath = absPath.replace(baseDir, "").replace(/^[\/\\]/, "");
+      // Normalize path separators to forward slashes
+      return relativePath.replace(/\\/g, "/");
+    });
   }
 
   /**

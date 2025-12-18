@@ -33,6 +33,10 @@ export interface IFileMetadata {
 /**
  * File entity representing uploaded files in the system
  *
+ * Files are stored in date-based directories (YYYY/MM) to avoid
+ * filesystem limitations. The storageName contains the full relative
+ * path including the date folders.
+ *
  * @export
  * @class FileEntity
  *
@@ -40,10 +44,11 @@ export interface IFileMetadata {
  * ```typescript
  * const file = new FileEntity();
  * file.originalName = 'document.pdf';
- * file.storageName = 'a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf';
+ * file.storageName = '2024/12/a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf';
  * file.mimeType = 'application/pdf';
  * file.size = 1024000;
  * file.isPublic = false;
+ * file.path = '/invoices/'; // Virtual path for organization
  * ```
  */
 @Entity("files")
@@ -71,13 +76,13 @@ export class FileEntity {
   originalName: string;
 
   /**
-   * Generated unique filename used for storage
-   * Typically UUID + original extension
+   * Relative path to the file in storage, including date-based directories
+   * Format: YYYY/MM/uuid.extension
    *
    * @type {string}
-   * @example 'a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf'
+   * @example '2024/12/a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf'
    */
-  @Column({ type: "varchar", length: 255, unique: true })
+  @Column({ type: "varchar", length: 500, unique: true })
   @Index()
   storageName: string;
 
@@ -109,6 +114,7 @@ export class FileEntity {
   /**
    * Virtual path for logical organization
    * Does not affect physical storage location
+   * Must start and end with /
    *
    * @type {string}
    * @example '/documents/invoices/2024/'
