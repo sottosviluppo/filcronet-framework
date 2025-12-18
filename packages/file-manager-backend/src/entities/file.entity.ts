@@ -37,6 +37,8 @@ export interface IFileMetadata {
  * filesystem limitations. The storageName contains the full relative
  * path including the date folders.
  *
+ * Supports PostgreSQL, MySQL, and MSSQL databases.
+ *
  * @export
  * @class FileEntity
  *
@@ -72,7 +74,7 @@ export class FileEntity {
    * @type {string}
    * @example 'my-document.pdf'
    */
-  @Column({ type: "varchar", length: 255 })
+  @Column({ length: 255 })
   originalName: string;
 
   /**
@@ -82,7 +84,7 @@ export class FileEntity {
    * @type {string}
    * @example '2024/12/a1b2c3d4-e5f6-7890-abcd-ef1234567890.pdf'
    */
-  @Column({ type: "varchar", length: 500, unique: true })
+  @Column({ length: 500, unique: true })
   @Index()
   storageName: string;
 
@@ -92,7 +94,7 @@ export class FileEntity {
    * @type {string}
    * @example 'application/pdf', 'image/jpeg'
    */
-  @Column({ type: "varchar", length: 127 })
+  @Column({ length: 127 })
   @Index()
   mimeType: string;
 
@@ -119,7 +121,7 @@ export class FileEntity {
    * @type {string}
    * @example '/documents/invoices/2024/'
    */
-  @Column({ type: "varchar", length: 1000, default: "/" })
+  @Column({ length: 1000, default: "/" })
   path: string;
 
   /**
@@ -127,7 +129,7 @@ export class FileEntity {
    *
    * @type {boolean}
    */
-  @Column({ type: "boolean", default: false })
+  @Column({ default: false })
   isPublic: boolean;
 
   /**
@@ -136,7 +138,7 @@ export class FileEntity {
    * @type {(string | null)}
    * @example 'user', 'order', 'product'
    */
-  @Column({ type: "varchar", length: 100, nullable: true })
+  @Column({ length: 100, nullable: true })
   entityType: string | null;
 
   /**
@@ -145,7 +147,7 @@ export class FileEntity {
    * @type {(string | null)}
    * @example '123', 'abc-def-ghi'
    */
-  @Column({ type: "varchar", length: 100, nullable: true })
+  @Column({ length: 100, nullable: true })
   entityId: string | null;
 
   /**
@@ -171,7 +173,7 @@ export class FileEntity {
    * @type {(string | null)}
    * @example 'invoices', 'avatars', 'documents'
    */
-  @Column({ type: "varchar", length: 100, nullable: true })
+  @Column({ length: 100, nullable: true })
   category: string | null;
 
   /**
