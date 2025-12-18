@@ -12,7 +12,12 @@ import {
   HttpStatus,
   UseGuards,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from "@nestjs/swagger";
+import {
+  ApiTags,
+  ApiOperation,
+  ApiResponse,
+  ApiBearerAuth,
+} from "@nestjs/swagger";
 
 import { CleanupService } from "../services/cleanup.service";
 import { StorageService } from "../services/storage.service";
@@ -97,7 +102,6 @@ export interface IHealthCheckResponse {
  * ```
  */
 @ApiTags("Files - Admin")
-@ApiBearerAuth()
 @Controller({ path: "files/admin", version: "1" })
 @UseGuards(FileManagerGuard)
 export class AdminFileController {
