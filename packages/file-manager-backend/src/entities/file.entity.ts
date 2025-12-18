@@ -187,7 +187,7 @@ export class FileEntity {
    *
    * @type {string}
    */
-  @Column({ type: "uuid" })
+  @Column({ type: "varchar", length: 100 })
   uploadedById: string;
 
   /**
