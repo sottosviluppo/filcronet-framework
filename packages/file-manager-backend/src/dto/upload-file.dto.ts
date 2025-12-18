@@ -70,6 +70,18 @@ export class UploadFileDto {
   entityId?: string;
 
   /**
+   * User ID for polymorphic association
+   */
+  @ApiPropertyOptional({
+    description: "User ID for polymorphic association",
+    example: "550e8400-e29b-41d4-a716-446655440000",
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  uploadedById?: string;
+
+  /**
    * Tags for categorization
    */
   @ApiPropertyOptional({

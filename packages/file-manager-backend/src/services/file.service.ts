@@ -72,15 +72,13 @@ export class FileService {
    *
    * @param {IUploadedFile} file - Uploaded file from multer
    * @param {UploadFileDto} dto - Upload metadata
-   * @param {string} userId - ID of the uploading user
    * @returns {Promise<IUploadResult>} Upload result
    * @throws {BadRequestException} If file validation fails
    * @memberof FileService
    */
   async uploadFile(
     file: IUploadedFile,
-    dto: UploadFileDto,
-    userId: string
+    dto: UploadFileDto
   ): Promise<IUploadResult> {
     // Validate file
     this.validateFile(file);
@@ -109,7 +107,7 @@ export class FileService {
       metadata,
       tags: dto.tags ?? null,
       category: dto.category ?? null,
-      uploadedById: userId,
+      uploadedById: dto.uploadedById,
     });
 
     const savedFile = await this.fileRepository.save(fileEntity);
@@ -131,13 +129,12 @@ export class FileService {
    */
   async uploadFiles(
     files: IUploadedFile[],
-    dto: UploadFileDto,
-    userId: string
+    dto: UploadFileDto
   ): Promise<IUploadResult[]> {
     const results: IUploadResult[] = [];
 
     for (const file of files) {
-      const result = await this.uploadFile(file, dto, userId);
+      const result = await this.uploadFile(file, dto);
       results.push(result);
     }
 

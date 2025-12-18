@@ -31,7 +31,6 @@ import {
   ApiConsumes,
   ApiBody,
   ApiParam,
-  ApiBearerAuth,
 } from "@nestjs/swagger";
 import { FileInterceptor, FilesInterceptor } from "@nestjs/platform-express";
 import type { Response, Request } from "express";
@@ -96,14 +95,6 @@ export class FileController {
     private readonly storageService: StorageService
   ) {}
 
-  /**
-   * Extracts user ID from request
-   * Falls back to anonymous ID if user not authenticated
-   */
-  private getUserId(req: IAuthenticatedRequest): string {
-    return req.user?.id ?? "00000000-0000-0000-0000-000000000000";
-  }
-
   // ===== UPLOAD ENDPOINTS =====
 
   /**
@@ -142,8 +133,7 @@ export class FileController {
     @Body() dto: UploadFileDto,
     @Req() req: IAuthenticatedRequest
   ): Promise<IApiResponse<IFileResponse>> {
-    const userId = this.getUserId(req);
-    const result = await this.fileService.uploadFile(file, dto, userId);
+    const result = await this.fileService.uploadFile(file, dto);
     return ResponseHelper.success(
       result.file.toResponseObject(result.downloadUrl),
       "File uploaded successfully"
@@ -185,8 +175,7 @@ export class FileController {
     @Body() dto: UploadFileDto,
     @Req() req: IAuthenticatedRequest
   ): Promise<IApiResponse<IFileResponse[]>> {
-    const userId = this.getUserId(req);
-    const results = await this.fileService.uploadFiles(files, dto, userId);
+    const results = await this.fileService.uploadFiles(files, dto);
     const responses = results.map((r) =>
       r.file.toResponseObject(r.downloadUrl)
     );
