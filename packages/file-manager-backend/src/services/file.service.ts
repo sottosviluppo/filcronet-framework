@@ -290,6 +290,20 @@ export class FileService {
     if (dto.tags !== undefined) file.tags = dto.tags;
     if (dto.category !== undefined) file.category = dto.category;
 
+    // Merge metadata instead of replacing
+    if (dto.metadata !== undefined) {
+      if (dto.metadata === null) {
+        // Explicit null = remove all metadata
+        file.metadata = null;
+      } else {
+        // Merge new metadata with existing
+        file.metadata = {
+          ...file.metadata,
+          ...dto.metadata,
+        };
+      }
+    }
+
     return this.fileRepository.save(file);
   }
 

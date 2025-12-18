@@ -3,10 +3,12 @@ import {
   IsOptional,
   IsBoolean,
   IsArray,
+  IsObject,
   MaxLength,
   Matches,
 } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
+import type { IFileMetadata } from "../entities/file.entity";
 
 /**
  * Data Transfer Object for updating file metadata
@@ -91,4 +93,19 @@ export class UpdateFileDto {
   @IsString()
   @MaxLength(100)
   category?: string | null;
+
+  /**
+   * Custom metadata object
+   * Can contain any additional properties (description, custom fields, etc.)
+   * Pass null to remove all metadata
+   * Note: This replaces the entire metadata object, not individual fields
+   */
+  @ApiPropertyOptional({
+    description:
+      "Custom metadata object. Replaces entire metadata. Pass null to remove.",
+    example: { description: "My file description", customField: "value" },
+  })
+  @IsOptional()
+  @IsObject()
+  metadata?: IFileMetadata | null;
 }
