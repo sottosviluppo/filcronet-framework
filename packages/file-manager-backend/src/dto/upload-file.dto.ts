@@ -5,6 +5,7 @@ import {
   IsArray,
   MaxLength,
   Matches,
+  IsObject,
 } from "class-validator";
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
@@ -115,4 +116,25 @@ export class UploadFileDto {
   @IsString()
   @MaxLength(100)
   category?: string;
+
+  /**
+   * Custom metadata for the file
+   */
+  @ApiPropertyOptional({
+    description: "Custom metadata object for the file",
+    example: { signerName: "Mario Rossi", signedAt: "2024-01-15T10:30:00Z" },
+  })
+  @IsOptional()
+  @IsObject()
+  @Transform(({ value }) => {
+    if (typeof value === "string") {
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    }
+    return value;
+  })
+  metadata?: Record<string, unknown>;
 }

@@ -89,10 +89,15 @@ export class FileService {
     const storageResult = await this.storageService.storeFile(file, isPublic);
 
     // Extract metadata
-    const metadata = await this.metadataService.extractMetadata(
+    const extractedMetadata = await this.metadataService.extractMetadata(
       file.buffer,
       file.mimetype
     );
+
+    const metadata = {
+      ...extractedMetadata,
+      ...dto.metadata,
+    };
 
     // Create database record
     const fileEntity = this.fileRepository.create({
