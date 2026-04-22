@@ -4,6 +4,7 @@
     "build": "pnpm -r build",
     "dev": "pnpm -r --parallel dev",
     "clean": "pnpm -r clean",
+    "publish:all": "pnpm -r publish --access public",
     "version:patch": "pnpm -r exec pnpm version patch",
     "version:minor": "pnpm -r exec pnpm version minor",
     "version:major": "pnpm -r exec pnpm version major"
